@@ -139,7 +139,7 @@ public abstract class Charm
 		{
 			float step = pendingWear;
 			pendingWear = 0f;
-			Wear(step);
+			Wear(step, quiet: true);
 		}
 	}
 
@@ -178,6 +178,15 @@ public abstract class Charm
 	/// </summary>
 	public void WearValuable(ValuableObject valuable, float wearPercent)
 	{
+		WearValuable(valuable, wearPercent, quiet: false);
+	}
+
+	/// <summary>
+	/// Like <see cref="WearValuable(ValuableObject, float)"/>. With <paramref name="quiet"/> the wear makes no sound, smoke or floating
+	/// number: use it for wear that happens continuously (several times a second), where the game's break effects would tick all the time.
+	/// </summary>
+	public void WearValuable(ValuableObject valuable, float wearPercent, bool quiet)
+	{
 		if (valuable == null || wearPercent <= 0f)
 		{
 			return;
@@ -186,12 +195,18 @@ public abstract class Charm
 		CharmWear? wear = valuable.GetComponent<CharmWear>();
 		if (wear != null)
 		{
-			wear.RequestWear(wearPercent);
+			wear.RequestWear(wearPercent, quiet);
 		}
 	}
 
 	/// <summary>Wears the carried valuable down by a share of its original value without touching the cooldown.</summary>
 	public void Wear(float wearPercent)
+	{
+		Wear(wearPercent, quiet: false);
+	}
+
+	/// <summary>Like <see cref="Wear(float)"/>; with <paramref name="quiet"/> the wear makes no sound, smoke or floating number (for continuous wear).</summary>
+	public void Wear(float wearPercent, bool quiet)
 	{
 		if (carried.Count == 0 || wearPercent <= 0f)
 		{
@@ -207,7 +222,7 @@ public abstract class Charm
 		CharmWear? wear = valuable.GetComponent<CharmWear>();
 		if (wear != null)
 		{
-			wear.RequestWear(wearPercent);
+			wear.RequestWear(wearPercent, quiet);
 		}
 	}
 

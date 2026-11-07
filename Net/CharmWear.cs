@@ -16,6 +16,12 @@ internal sealed class CharmWear : MonoBehaviourPun
 {
 	private ValuableObject valuable = null!;
 
+	/// <summary>
+	/// A break level the game does not use. Wear requested with it is applied quietly (no sound, smoke or floating number) by
+	/// <c>PhysGrabObjectImpactDetector_BreakRPC_Patch</c>; the level travels with the game's own break RPC to every machine.
+	/// </summary>
+	internal const int QuietBreakLevel = -77;
+
 	private float deadSince = -1f;
 
 	private void Awake()
@@ -52,30 +58,30 @@ internal sealed class CharmWear : MonoBehaviourPun
 	}
 
 	/// <summary>Asks for <paramref name="percent"/> of the original value to be worn away (the global multiplier is already included).</summary>
-	internal void RequestWear(float percent)
+	internal void RequestWear(float percent, bool quiet = false)
 	{
 		Vector3 at = PlayerAvatar.instance != null ? PlayerAvatar.instance.transform.position + Vector3.up : transform.position;
 		if (!SemiFunc.IsMultiplayer() || PhotonNetwork.IsMasterClient)
 		{
-			ApplyWear(percent, at);
+			ApplyWear(percent, at, quiet);
 			return;
 		}
 
-		photonView.RPC(nameof(RequestWearRpc), RpcTarget.MasterClient, percent, at);
+		photonView.RPC(nameof(RequestWearRpc), RpcTarget.MasterClient, percent, at, quiet);
 	}
 
 	[PunRPC]
-	private void RequestWearRpc(float percent, Vector3 at)
+	private void RequestWearRpc(float percent, Vector3 at, bool quiet)
 	{
 		if (!PhotonNetwork.IsMasterClient)
 		{
 			return;
 		}
 
-		ApplyWear(Mathf.Clamp(percent, 0f, 100f), at);
+		ApplyWear(Mathf.Clamp(percent, 0f, 100f), at, quiet);
 	}
 
-	private void ApplyWear(float percent, Vector3 at)
+	private void ApplyWear(float percent, Vector3 at, bool quiet)
 	{
 		if (valuable == null || !PocketsApi.IsPocketed(valuable))
 		{
@@ -103,7 +109,7 @@ internal sealed class CharmWear : MonoBehaviourPun
 		}
 
 		OwnerCharm()?.LogDebug($"Wear {valuable.name}: -{lost:0} (original {valuable.dollarValueOriginal:0}, current {valuable.dollarValueCurrent:0}, {percent:0.#}%)");
-		detector.Break(lost, at, detector.breakLevelLight, true);
+		detector.Break(lost, at, quiet ? QuietBreakLevel : detector.breakLevelLight, true);
 		OwnerCharm()?.LogDebug($"After wear {valuable.name}: current {valuable.dollarValueCurrent:0}, dead {valuable.physGrabObject != null && valuable.physGrabObject.dead}");
 	}
 

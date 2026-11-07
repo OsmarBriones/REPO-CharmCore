@@ -103,6 +103,16 @@ public class GameContractTests
 	}
 
 	[TestMethod]
+	public void QuietWear_HasTheMembersItUses()
+	{
+		RequireMethod("PhysGrabObjectImpactDetector", "BreakRPC", 5);
+		RequireMethod("PhysGrabObjectImpactDetector", "DestroyObject", 2);
+		RequireField("PhysGrabObjectImpactDetector", "valuableObject");
+		RequireMethod("SemiFunc", "RunIsTutorial", 0);
+		RequireMethod("SemiFunc", "MasterOnlyRPC", 1);
+	}
+
+	[TestMethod]
 	public void DebugSpawner_HasTheMembersItUses()
 	{
 		RequireField("LevelGenerator", "Instance");
