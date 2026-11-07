@@ -1,0 +1,9 @@
+{
+    "name":  "CharmCore",
+    "version_number":  "1.0.0",
+    "website_url":  "https://github.com/OsmarBriones/REPO-CharmCore",
+    "description":  "Engine behind the Charm mods: valuables in your pockets grant powers and wear down with use. Everyone in the lobby needs it.",
+    "dependencies":  [
+                         "BepInEx-BepInExPack-5.4.2304"
+                     ]
+}
