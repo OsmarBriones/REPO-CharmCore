@@ -1,16 +1,11 @@
+using CharmCore.Net;
 using HarmonyLib;
 
 namespace CharmCore.Patches;
 
 /// <summary>
-/// Reloads configuration and resets per-level state when a playable level loads.
-/// 
-/// LIFECYCLE GUIDANCE:
-/// - EnemyDirector.Start runs at Frame 0 of scene load, BEFORE procedural generation completes.
-///   Appropriate for: reloading config, resetting in-memory per-level counters.
-///   Do NOT use for: spawning items, checking dungeon geometry, or querying TruckSafetySpawnPoint.
-/// - If your mod interacts with the generated level or truck, hook RoundDirector.StartRoundLogic
-///   or SemiFunc.OnLevelGenDone instead (executes after LevelGenerator.Instance.Generated is true).
+/// Runs when a playable level loads (before generation finishes): reloads the configuration, forgets the charms of
+/// the previous level (pockets are emptied then) and, on the host, publishes the settings to the room.
 /// </summary>
 [HarmonyPatch(typeof(EnemyDirector), "Start")]
 internal static class EnemyDirector_Start_Patch
@@ -19,8 +14,12 @@ internal static class EnemyDirector_Start_Patch
 	private static void Postfix()
 	{
 		if (!SemiFunc.RunIsLevel())
+		{
 			return;
+		}
 
 		ConfigurationController.Reload();
+		CharmTracker.Clear();
+		HostSettings.Publish();
 	}
 }

@@ -1,49 +1,49 @@
 # CharmCore Architecture
 
-This document describes the runtime structure, data flow, and design decisions for this mod.
+CharmCore is layer 2 of the PocketCharms family (see `sandbox/PocketCharms_spec.md` in the workspace). It depends on **Pockets** (storage) and is depended on by every `Charm<Valuable>` mod.
 
----
+## Responsibilities
 
-## High-Level Concept
+- A registry of charms (`CharmsApi`), each tied to one or more valuable prefab names.
+- Tracks the **local player's** pockets through `PocketsApi.Stored` / `Removed` and switches the matching `Charm` on and off.
+- A wear engine: wearing a valuable down is requested by the carrier and applied by the master.
+- Cooldown timing and its display on the inventory slot.
+- Host-authoritative settings.
 
-Briefly summarize what this mod does:
-1. **Trigger / Hook:** What game event or lifecycle point triggers mod logic.
-2. **Authority / Networking:** Specify if logic runs host-only (singleplayer/master client) or on all clients.
-3. **Outcome:** What changes in the game (item spawned, enemy stunned, stats adjusted, etc.).
+It does not implement any power. Powers are local to the carrier (energy, damage taken, speed), so each Charm mod reads game state itself and calls `Charm.TryUse()`.
 
----
+## Public API (`CharmCore.Api`)
 
-## Main Data Flow
+- `Charm` (abstract): constructor takes id, display name, default wear percent, default cooldown (null for none) and prefab names. Members: `IsActive`, `IsReady`, `WearPercent`, `CooldownSeconds`, `CooldownRemaining`, `TryUse()`, `TryUse(float wear)`, `Wear(float)`, `AddSetting(...)`, `OnActivated`, `OnDeactivated`.
+- `CharmSetting`: a numeric setting with the host's value in force (`Value`).
+- `CharmsApi.Register(charm, config)`: binds `Charm.<Id>` config section (`Enabled`, `WearPercent`, `CooldownSeconds`, extras).
 
-### 1. Level Start / Initialization
-- Entry point: `Patches/EnemyDirector_Start_Patch.cs` (Harmony patch on `EnemyDirector.Start`).
-- Checks `SemiFunc.RunIsLevel()` to ensure execution only in playable levels.
-- Refreshes configuration via `ConfigurationController.Reload()`.
-- Resets any per-level state or counters.
+## Flow
 
-### 2. Gameplay Events & Patches
-- Place each Harmony patch in `Patches/<TargetType>_<TargetMethod>_Patch.cs`.
-- Follow the host-only pattern where applicable:
-  ```csharp
-  if (!SemiFunc.IsMasterClientOrSingleplayer()) return;
-  ```
+1. `PocketsApi.Stored` fires for a valuable. `CharmTracker` ignores other players, looks the valuable's prefab name up in the registry and calls `Charm.Carry`. `Charm.IsActive` is true while at least one matching valuable is pocketed.
+2. The Charm mod's own code decides when its power triggers and calls `TryUse()`. If the charm is ready, the cooldown starts, wear is requested and the call returns true.
+3. `CharmWear` (a component added to every valuable by `ValuableObject_Start_Patch`) sends `RequestWearRpc(percent, position)` to the master (or applies it directly on the master or alone). The master checks the valuable is pocketed and calls `PhysGrabObjectImpactDetector.Break(valueLost, position, breakLevelLight, true)`, the routine vanilla uses for hits. That lowers the value on every client, shows the floating loss number and destroys the valuable under 15% of its original value.
+4. A destroyed valuable raises no pocket event, so `CharmTracker.Update` drops the charm when its valuable disappears.
+5. `CharmSlotView` (on each `InventorySpot`) draws the veil and seconds while `CharmTracker.TryGetCooldown` reports a running cooldown for that slot.
 
-### 3. Shared Library Usage (RepoAPI)
-- If the mod consumes shared logic (spawning items, item keys, reflection helpers), pull only the required modules via git submodule in `external/RepoAPI` and `<Compile Include>` in `.csproj`.
-- Never duplicate generic RepoAPI code locally.
+## Settings and the host
 
----
+`ConfigurationController` holds `Enabled` and `WearMultiplier`. Each charm adds `Enabled`, `WearPercent`, `CooldownSeconds` and its own `CharmSetting`s. The master publishes all of them as room custom properties (`HostSettings.Publish`) on level start, when a setting changes and when the master changes; clients read them on demand and alone a machine uses its own values.
 
-## Key Design Decisions & Invariants
+## Hooks
 
-- **Standalone build:** This repository builds into a single self-contained DLL (`CharmCore.dll`).
-- **Configuration reload:** Settings reload cleanly on level transition without requiring a game restart.
+| Target | Why |
+|--------|-----|
+| `EnemyDirector.Start` (postfix) | reload config, clear tracked charms, publish host settings |
+| `ValuableObject.Start` (postfix) | add `CharmWear` and refresh the RPC cache |
+| `InventorySpot.UpdateUI` (postfix) | attach `CharmSlotView` |
 
----
+## Known limits
 
-## Testing Strategy
+- The master does not verify who asked for a wear step beyond checking the valuable is pocketed; a modified client could wear its own valuable, which only hurts itself.
+- Charms are looked up by exact prefab name (for example `Valuable Arctic Coffee Cup`), so a game update that renames a prefab needs a mod update.
+- Only the local player's pockets are tracked.
 
-Follows the 3-tier testing strategy in `external/RepoKit/REPO_MODS_METHODOLOGY.md` §8:
-1. **Tier 1 (Unit tests):** Decouple pure business logic and test via a companion test project (`dotnet test`).
-2. **Tier 2 (Harmony verification):** Verify that patch targets exist in `Assembly-CSharp.dll` before deploying.
-3. **Tier 3 (In-game smoke test / Optional debug triggers):** Default validation is done simply by launching the game and observing normal gameplay. Custom hotkeys/triggers are strictly optional and off by default, only used when mechanics are rare or difficult to reach naturally.
+## Tests
+
+`CharmCore.Tests`: Tier 1 for `WearMath` and `CooldownTimer`; Tier 2 reflection checks of the game members used (`dotnet test`).

@@ -32,6 +32,11 @@
     <EmbeddedResource Remove="external\**" />
     <None Remove="external\**" />
 
+    <!-- The test project lives in a subfolder and must not be compiled into the mod. -->
+    <Compile Remove="CharmCore.Tests\**" />
+    <EmbeddedResource Remove="CharmCore.Tests\**" />
+    <None Remove="CharmCore.Tests\**" />
+
     <!-- When consuming RepoAPI modules (after git submodule add https://github.com/OsmarBriones/RepoAPI.git external/RepoAPI):
     <Compile Include="external\RepoAPI\Items\ItemProvider.cs" />
     <Compile Include="external\RepoAPI\Items\ItemKeysProvider.cs" />
@@ -77,6 +82,29 @@
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>$(RepoManaged)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(RepoManaged)\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="PhotonRealtime">
+      <HintPath>$(RepoManaged)\PhotonRealtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Photon3Unity3D">
+      <HintPath>$(RepoManaged)\Photon3Unity3D.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Pockets is a real dependency (its own package), referenced as a built DLL and never copied next to this one.
+         Pockets.dll references netstandard types for its icon code, so the compiler needs the game's copy. -->
+    <Reference Include="netstandard">
+      <HintPath>$(RepoManaged)\netstandard.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Pockets">
+      <HintPath Condition="Exists('$(MSBuildProjectDirectory)\..\REPO-Pockets\bin\Release\net48\Pockets.dll')">$(MSBuildProjectDirectory)\..\REPO-Pockets\bin\Release\net48\Pockets.dll</HintPath>
+      <HintPath Condition="'$(PocketsDll)' != ''">$(PocketsDll)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

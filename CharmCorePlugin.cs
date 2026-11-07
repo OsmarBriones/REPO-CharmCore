@@ -1,15 +1,15 @@
 using BepInEx;
-using BepInEx.Logging;
+using CharmCore.Net;
 using HarmonyLib;
+using Pockets.Api;
 using UnityEngine;
 
 namespace CharmCore
 {
 	[BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+	[BepInDependency("com.osmar.Pockets", BepInDependency.DependencyFlags.HardDependency)]
 	public class CharmCorePlugin : BaseUnityPlugin
 	{
-		// Se reemplaza com.osmar por el parámetro AuthorId del template.json
-		// y CharmCore por el nombre del proyecto (sourceName).
 		public const string PluginGuid = "com.osmar.CharmCore";
 		public const string PluginName = "CharmCore";
 		public const string PluginVersion = "1.0.0";
@@ -26,6 +26,12 @@ namespace CharmCore
 			this.gameObject.hideFlags = HideFlags.HideAndDontSave;
 
 			ConfigurationController.Initialize(this.Config);
+
+			// Charms are driven by the value of the valuable, so the slot must always show it.
+			PocketsApi.RequireSlotValue(PluginGuid);
+
+			this.gameObject.AddComponent<CharmTracker>();
+			this.gameObject.AddComponent<CharmRoomEvents>();
 
 			Harmony = new Harmony(Info.Metadata.GUID);
 			Harmony.PatchAll();
