@@ -94,6 +94,10 @@ internal sealed class CharmSlotView : MonoBehaviour
 		veilRect.sizeDelta = iconRect.sizeDelta;
 		veilRect.localScale = iconRect.localScale;
 
+		// Draw the veil right above the picture and below everything created later, in particular Pockets' value label,
+		// so the veil darkens the picture but never covers the value.
+		veilRect.SetSiblingIndex(iconRect.GetSiblingIndex() + 1);
+
 		veil = veilObject.GetComponent<Image>();
 		veil.sprite = WhiteSprite();
 		veil.type = Image.Type.Filled;
@@ -108,12 +112,15 @@ internal sealed class CharmSlotView : MonoBehaviour
 		label.enableAutoSizing = false;
 		label.textWrappingMode = TextWrappingModes.NoWrap;
 		label.overflowMode = TextOverflowModes.Overflow;
-		label.fontSize = template.fontSize * 0.8f;
+		label.fontSize = template.fontSize * 0.55f;
 		label.color = Color.white;
 		label.raycastTarget = false;
 		label.outlineWidth = 0.3f;
 		label.outlineColor = new Color32(0, 0, 0, 255);
-		label.rectTransform.anchoredPosition = iconRect.anchoredPosition;
+
+		// The seconds sit inside the upper edge of the picture; the stored valuable's value is at the lower edge (Pockets).
+		float inset = label.fontSize * 0.7f;
+		label.rectTransform.anchoredPosition = iconRect.anchoredPosition + new Vector2(0f, iconRect.rect.yMax - inset);
 		return true;
 	}
 

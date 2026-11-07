@@ -24,7 +24,7 @@ It does not implement any power. Powers are local to the carrier (energy, damage
 2. The Charm mod's own code decides when its power triggers and calls `TryUse()`. If the charm is ready, the cooldown starts, wear is requested and the call returns true.
 3. `CharmWear` (a component added to every valuable by `ValuableObject_Start_Patch`) sends `RequestWearRpc(percent, position)` to the master (or applies it directly on the master or alone). The master checks the valuable is pocketed and calls `PhysGrabObjectImpactDetector.Break(valueLost, position, breakLevelLight, true)`, the routine vanilla uses for hits. That lowers the value on every client, shows the floating loss number and destroys the valuable under 15% of its original value.
 4. A destroyed valuable raises no pocket event, so `CharmTracker.Update` drops the charm when its valuable disappears.
-5. `CharmSlotView` (on each `InventorySpot`) draws the veil and seconds while `CharmTracker.TryGetCooldown` reports a running cooldown for that slot.
+5. `CharmSlotView` (on each `InventorySpot`) draws the veil and seconds while `CharmTracker.TryGetCooldown` reports a running cooldown for that slot. The veil is placed right above the picture in the UI order (below Pockets' value label, so the value is never covered) and the seconds are small, at the top of the picture; the value stays at the bottom.
 
 ## Settings and the host
 
