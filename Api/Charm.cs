@@ -244,6 +244,20 @@ public abstract class Charm
 	{
 	}
 
+	/// <summary>
+	/// Called when a level ends (and again when the next one starts), after the charm was deactivated. Clear here everything the
+	/// charm remembers about the level: caches, sets, lists of game objects, per-player accumulators. Game objects of the level are
+	/// destroyed when it ends, and anything still referenced from a field only keeps dead wrappers alive.
+	/// </summary>
+	protected virtual void OnLevelEnded()
+	{
+	}
+
+	internal void NotifyLevelEnded()
+	{
+		Guard(OnLevelEnded, nameof(OnLevelEnded));
+	}
+
 	internal float CooldownTotal => cooldown.Total;
 
 	internal void Bind(ConfigFile config)

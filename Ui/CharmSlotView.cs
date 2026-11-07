@@ -23,6 +23,15 @@ internal sealed class CharmSlotView : MonoBehaviour
 
 	private readonly Vector3[] corners = new Vector3[4];
 
+	// Last computed layout and shown text: the UI is only touched when something changed (each change makes the text rebuild its mesh).
+	private bool layoutDone;
+	private float lastLeft;
+	private float lastRight;
+	private float lastTop;
+	private float lastBottom;
+	private string lastSeconds = string.Empty;
+	private bool shown;
+
 	// Pockets' value label while this view lays it out (its original look is saved and restored when the cooldown ends).
 	private TextMeshProUGUI? valueLabel;
 	private LabelState valueOriginal;
@@ -72,9 +81,15 @@ internal sealed class CharmSlotView : MonoBehaviour
 		}
 
 		veil!.fillAmount = WearMath.CooldownFraction(remaining, total);
-		label!.text = remaining >= 10f
+		string seconds = remaining >= 10f
 			? Mathf.CeilToInt(remaining).ToString(CultureInfo.InvariantCulture)
 			: remaining.ToString("0.0", CultureInfo.InvariantCulture);
+		if (seconds != lastSeconds)
+		{
+			lastSeconds = seconds;
+			label!.text = seconds;
+		}
+
 		SetVisible(true);
 		LayoutTexts();
 	}
@@ -111,6 +126,14 @@ internal sealed class CharmSlotView : MonoBehaviour
 		float right = Mathf.Min(topRight.x, screenWidth);
 		float top = Mathf.Min(topRight.y, screenHeight);
 		float bottom = Mathf.Max(bottomLeft.y, 0f);
+
+		// Nothing moved since the last frame: the texts are already in place.
+		if (layoutDone && valueLaidOut && Mathf.Approximately(left, lastLeft) && Mathf.Approximately(right, lastRight)
+			&& Mathf.Approximately(top, lastTop) && Mathf.Approximately(bottom, lastBottom))
+		{
+			return;
+		}
+
 		SlotLayout.Split(left, right, top, bottom, out LabelBox secondsBox, out LabelBox valueBox);
 		if (secondsBox.Width <= 0f)
 		{
@@ -133,6 +156,11 @@ internal sealed class CharmSlotView : MonoBehaviour
 		}
 
 		Place(value, valueBox, camera);
+		lastLeft = left;
+		lastRight = right;
+		lastTop = top;
+		lastBottom = bottom;
+		layoutDone = true;
 	}
 
 	/// <summary>Puts a text in a screen-space box and lets it auto-size to the largest font that fits.</summary>
@@ -185,6 +213,8 @@ internal sealed class CharmSlotView : MonoBehaviour
 		}
 
 		valueLaidOut = false;
+		layoutDone = false;
+		lastSeconds = string.Empty;
 		TextMeshProUGUI? value = valueLabel;
 		valueLabel = null;
 		if (value == null)
@@ -206,6 +236,12 @@ internal sealed class CharmSlotView : MonoBehaviour
 
 	private void SetVisible(bool visible)
 	{
+		if (visible == shown)
+		{
+			return;
+		}
+
+		shown = visible;
 		if (veil != null)
 		{
 			veil.enabled = visible;

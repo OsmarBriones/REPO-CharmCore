@@ -41,6 +41,8 @@ internal sealed class CharmTracker : MonoBehaviour
 	}
 
 	private float nextSpawnSwitchCheck;
+	private float nextLevelCheck;
+	private bool wasInLevel;
 
 	private void Update()
 	{
@@ -48,6 +50,20 @@ internal sealed class CharmTracker : MonoBehaviour
 		{
 			nextSpawnSwitchCheck = Time.unscaledTime + 1f;
 			DebugSpawner.ServeSpawnSwitches();
+		}
+
+		// Leaving a level: forget everything about it now, not when the next level starts, so no static field keeps pointing at the
+		// level's objects while the game unloads them.
+		if (Time.unscaledTime >= nextLevelCheck)
+		{
+			nextLevelCheck = Time.unscaledTime + 0.5f;
+			bool inLevel = IsInLevel();
+			if (wasInLevel && !inLevel)
+			{
+				Clear();
+			}
+
+			wasInLevel = inLevel;
 		}
 
 		// A worn-out valuable is destroyed without a pocket event; drop its charm when that happens.
@@ -71,6 +87,7 @@ internal sealed class CharmTracker : MonoBehaviour
 		foreach (Charm charm in CharmsApi.All)
 		{
 			charm.DropAll();
+			charm.NotifyLevelEnded();
 		}
 	}
 
@@ -88,6 +105,11 @@ internal sealed class CharmTracker : MonoBehaviour
 		remaining = charm.CooldownRemaining;
 		total = charm.CooldownTotal;
 		return remaining > 0f && total > 0f;
+	}
+
+	private static bool IsInLevel()
+	{
+		return RunManager.instance != null && SemiFunc.RunIsLevel();
 	}
 
 	private static void OnStored(PocketEvent pocketEvent)

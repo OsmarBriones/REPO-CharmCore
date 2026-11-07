@@ -103,6 +103,14 @@ public class GameContractTests
 	}
 
 	[TestMethod]
+	public void LevelDetection_HasTheMembersItUses()
+	{
+		RequireField("RunManager", "instance");
+		RequireField("RunManager", "levelCurrent");
+		RequireMethod("SemiFunc", "RunIsLevel", 0);
+	}
+
+	[TestMethod]
 	public void QuietWear_HasTheMembersItUses()
 	{
 		RequireMethod("PhysGrabObjectImpactDetector", "BreakRPC", 5);
