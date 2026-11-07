@@ -20,10 +20,11 @@ internal sealed class CharmSlotView : MonoBehaviour
 	private Image? veil;
 	private TextMeshProUGUI? label;
 
-	// While a cooldown is shown, Pockets' value label (the stored valuable's value) is made smaller and moved so the two texts do not overlap.
+	// While a cooldown is shown, Pockets' value label (the stored valuable's value) is made smaller, keeping its place, and the
+	// seconds go to the top edge, so the two texts do not overlap. The value must not move down: the slots are at the very bottom of
+	// the screen and anything lower than Pockets' own spot is cut off.
 	private bool compact;
 	private float valueFontOriginal;
-	private Vector2 valuePositionOriginal;
 
 	internal static CharmSlotView GetOrAdd(InventorySpot spot)
 	{
@@ -72,8 +73,8 @@ internal sealed class CharmSlotView : MonoBehaviour
 	}
 
 	/// <summary>
-	/// While a cooldown is shown the slot has little room: the value gets smaller and sits at the lower edge, the seconds sit at
-	/// the upper edge. When the cooldown ends the value goes back to its normal size and place.
+	/// While a cooldown is shown the slot has little room: the value gets smaller (in place) and the seconds sit at the upper
+	/// edge. When the cooldown ends the value goes back to its normal size.
 	/// </summary>
 	private void SetCompact(bool on)
 	{
@@ -92,18 +93,15 @@ internal sealed class CharmSlotView : MonoBehaviour
 
 			RectTransform iconRect = spot.inventoryIcon.rectTransform;
 			valueFontOriginal = value.fontSize;
-			valuePositionOriginal = value.rectTransform.anchoredPosition;
 			value.fontSize = valueFontOriginal * SlotLayout.CompactValueFontScale;
-			value.rectTransform.anchoredPosition = iconRect.anchoredPosition + new Vector2(0f, iconRect.rect.yMin + SlotLayout.ValueFromBottom(iconRect.rect.height));
 			label.rectTransform.anchoredPosition = iconRect.anchoredPosition + new Vector2(0f, iconRect.rect.yMax - SlotLayout.SecondsFromTop(iconRect.rect.height));
 			compact = true;
 			return;
 		}
 
-		if (value != null)
+		if (value != null && valueFontOriginal > 0f)
 		{
 			value.fontSize = valueFontOriginal;
-			value.rectTransform.anchoredPosition = valuePositionOriginal;
 		}
 
 		compact = false;
