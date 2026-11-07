@@ -13,7 +13,7 @@ internal static class SlotLayout
 	/// <summary>Share of the template font size used for the cooldown seconds.</summary>
 	internal const float SecondsFontScale = 0.5f;
 
-	private const float EdgeMargin = 0.14f;
+	private const float EdgeMargin = 0.22f;
 
 	/// <summary>Distance of the seconds' centre from the top edge of the picture, for a picture of the given height.</summary>
 	internal static float SecondsFromTop(float pictureHeight)
