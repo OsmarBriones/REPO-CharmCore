@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Runtime hygiene pass: network keys of the settings are built once (they were rebuilt on every read while a charm was active), the charm of a valuable is cached by instance id, and carrier lookups no longer allocate lists.
+
 ### Added
 - `Charm.OnLevelEnded`: charms are told when a level ends (and when the next one starts) so they clear what they remember about it; the tracker also forgets its slots at the end of the level instead of at the start of the next one.
 - The cooldown slot view updates text and layout only when something changed.

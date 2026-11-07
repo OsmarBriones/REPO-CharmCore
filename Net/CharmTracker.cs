@@ -89,6 +89,8 @@ internal sealed class CharmTracker : MonoBehaviour
 			charm.DropAll();
 			charm.NotifyLevelEnded();
 		}
+
+		CharmsApi.ClearCache();
 	}
 
 	/// <summary>The cooldown shown on a slot, when the charm in it has one running.</summary>
@@ -119,8 +121,7 @@ internal sealed class CharmTracker : MonoBehaviour
 			return;
 		}
 
-		string prefabName = pocketEvent.Valuable.gameObject.name.Replace("(Clone)", string.Empty).Trim();
-		Charm? charm = CharmsApi.FindFor(prefabName);
+		Charm? charm = CharmsApi.CharmOf(pocketEvent.Valuable);
 		if (charm == null)
 		{
 			return;

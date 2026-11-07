@@ -56,7 +56,7 @@ internal static class HostRequests
 		}
 
 		PlayerAvatar? sender = AvatarOf(photonEvent.Sender);
-		if (charm == null || sender == null || !charm.IsEnabled || !ConfigurationController.CoreEnabled || CharmsApi.CarriedBy(sender, charm).Count == 0)
+		if (charm == null || sender == null || !charm.IsEnabled || !ConfigurationController.CoreEnabled || CharmsApi.FirstCarried(sender, charm) == null)
 		{
 			return;
 		}

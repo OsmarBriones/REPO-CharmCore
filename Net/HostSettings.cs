@@ -28,11 +28,11 @@ internal static class HostSettings
 
 		foreach (Charm charm in CharmsApi.All)
 		{
-			properties[charm.Key("enabled")] = charm.LocalEnabled;
-			properties[charm.Key("wear")] = charm.LocalWearPercent;
+			properties[charm.EnabledKey] = charm.LocalEnabled;
+			properties[charm.WearKey] = charm.LocalWearPercent;
 			if (charm.LocalCooldownSeconds.HasValue)
 			{
-				properties[charm.Key("cooldown")] = charm.LocalCooldownSeconds.Value;
+				properties[charm.CooldownKey] = charm.LocalCooldownSeconds.Value;
 			}
 
 			foreach (CharmSetting setting in charm.Settings)

@@ -33,6 +33,7 @@ public static class CharmsApi
 
 		charm.Bind(config);
 		Charms.Add(charm);
+		CharmOfCache.Clear();
 		CharmCorePlugin.Logger.LogInfo($"Charm registered: {charm.DisplayName} ({string.Join(", ", charm.ValuablePrefabNames)})");
 	}
 
@@ -109,6 +110,35 @@ public static class CharmsApi
 		}
 	}
 
+	private static readonly Dictionary<int, Charm?> CharmOfCache = new Dictionary<int, Charm?>();
+
+	/// <summary>
+	/// The charm a valuable belongs to (by its prefab name), or null. Cached by instance id because the name lookup allocates strings
+	/// and this is asked often; the cache is dropped when a level ends (<see cref="ClearCache"/>).
+	/// </summary>
+	public static Charm? CharmOf(ValuableObject valuable)
+	{
+		if (valuable == null)
+		{
+			return null;
+		}
+
+		int id = valuable.GetInstanceID();
+		if (!CharmOfCache.TryGetValue(id, out Charm? charm))
+		{
+			charm = FindFor(valuable.gameObject.name.Replace("(Clone)", string.Empty).Trim());
+			CharmOfCache[id] = charm;
+		}
+
+		return charm;
+	}
+
+	/// <summary>Forgets the cached charm of each valuable (called when a level ends; its valuables are gone).</summary>
+	internal static void ClearCache()
+	{
+		CharmOfCache.Clear();
+	}
+
 	/// <summary>The player who carries <paramref name="valuable"/> in a pocket, or null when nobody does.</summary>
 	public static PlayerAvatar? CarrierOf(ValuableObject valuable)
 	{
@@ -147,7 +177,7 @@ public static class CharmsApi
 
 		foreach (ValuableObject? stored in Pockets.Api.PocketsApi.GetStored(KeyOf(avatar)))
 		{
-			if (stored != null && FindFor(stored.gameObject.name.Replace("(Clone)", string.Empty).Trim()) == charm)
+			if (stored != null && CharmOf(stored) == charm)
 			{
 				result.Add(stored);
 			}
@@ -164,19 +194,42 @@ public static class CharmsApi
 			return;
 		}
 
-		foreach (PlayerAvatar avatar in GameDirector.instance.PlayerList.ToArray())
+		List<PlayerAvatar> players = GameDirector.instance.PlayerList;
+		for (int index = 0; index < players.Count; index++)
 		{
+			PlayerAvatar avatar = players[index];
 			if (avatar == null || avatar.deadSet)
 			{
 				continue;
 			}
 
-			IReadOnlyList<ValuableObject> carried = CarriedBy(avatar, charm);
-			if (carried.Count > 0)
+			ValuableObject? carried = FirstCarried(avatar, charm);
+			if (carried != null)
 			{
-				action(avatar, carried[0]);
+				action(avatar, carried);
 			}
 		}
+	}
+
+	/// <summary>The first valuable of <paramref name="charm"/> in the player's pockets, or null. Allocates nothing but Pockets' small copy of the slots.</summary>
+	internal static ValuableObject? FirstCarried(PlayerAvatar avatar, Charm charm)
+	{
+		if (avatar == null)
+		{
+			return null;
+		}
+
+		IReadOnlyList<ValuableObject?> stored = Pockets.Api.PocketsApi.GetStored(KeyOf(avatar));
+		for (int slot = 0; slot < stored.Count; slot++)
+		{
+			ValuableObject? valuable = stored[slot];
+			if (valuable != null && CharmOf(valuable) == charm)
+			{
+				return valuable;
+			}
+		}
+
+		return null;
 	}
 
 	/// <summary>The key Pockets uses for a player: the avatar's view id in multiplayer, -1 alone.</summary>

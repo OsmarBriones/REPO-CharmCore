@@ -30,7 +30,10 @@ public sealed class CharmSetting
 	/// <summary>The value in force: the host's inside a room, this machine's otherwise.</summary>
 	public float Value => Clamp(HostSettings.GetFloat(Key, LocalValue));
 
-	internal string Key => owner.Key(name);
+	private string? key;
+
+	/// <summary>The network key, built once.</summary>
+	internal string Key => key ??= owner.Key(name);
 
 	/// <summary>Keeps a value inside the declared range, whatever the config file or the network delivered.</summary>
 	private float Clamp(float value)

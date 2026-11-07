@@ -37,6 +37,14 @@ It does not implement any power. Powers are local to the carrier (energy, damage
 - **Host effects.** Some powers only work on the host (moving a valuable, hurting a monster, spawning an enemy). Two ways: the host applies the effect itself for every carrier with `CharmsApi.ForEachCarrier` / `CarriedBy` (Pockets tracks every player's pockets on every machine) and wears with `Charm.WearValuable`; or the owner sends a request with `Charm.SendToHost(action, args)` (Photon event 183, delivered to the master, which checks the sender carries the charm and calls `OnHostRequest`).
 - **Wear modifiers (`CharmsApi.OnWearing`).** A `WearContext` is offered to handlers on the host before value is removed; a charm may lower `Loss` for valuables carried by a player (for example a charm that protects other charms). `CharmsApi.CarrierOf` finds who carries a valuable.
 
+## Runtime hygiene
+
+Reviewed against `RepoKit/references/runtime-hygiene.md`:
+- **References:** the tracker's slot arrays, each charm's carried list, the charm-of-valuable cache and every charm's `OnLevelEnded` are cleared when a level ends (see below). Nothing static holds a game object after that. The slot view keeps references only to HUD objects, which live as long as the HUD.
+- **Allocations:** the network keys of a charm's settings (`Enabled`, `WearPercent`, `CooldownSeconds`, and each custom setting) are built once instead of on every `IsActive`, `WearPercent` or `Value` read (they were rebuilt as strings each call while a charm was active). `CharmsApi.CharmOf` caches which charm a valuable belongs to by instance id (the name lookup allocated strings), and `ForEachCarrier` / the host-request check use `FirstCarried`, which allocates only Pockets' small copy of the slots (no lists, no `ToArray`).
+- **Work frequency:** the level check runs twice a second, the spawn switches once a second, and the slot view recomputes text and layout only when its inputs changed.
+- **Known remaining allocation:** `CharmsApi.CarriedBy` (public) still builds a list per call; hot paths should prefer `ForEachCarrier`.
+
 ## Cleanup when a level ends
 
 `CharmTracker` checks twice a second whether the game is still inside a level (`SemiFunc.RunIsLevel`). When a level ends it releases every tracked slot, deactivates the charms (`OnDeactivated`) and calls `Charm.OnLevelEnded` on each charm (also called when the next level starts). Charm mods override `OnLevelEnded` to clear what they remember about the level (caches, sets, lists of game objects, per-player accumulators), so no field keeps pointing at objects the game is about to destroy. This was added after a crash inside Unity's memory scan when leaving a level, where the cause could not be shown to be ours but static references to level objects are exactly what that scan walks. The slot view also touches the UI only when something changed (text, position), because every property change makes a TMP text rebuild its mesh.

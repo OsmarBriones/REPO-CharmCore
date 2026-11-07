@@ -42,6 +42,9 @@ public abstract class Charm
 	protected Charm(string id, string displayName, float defaultWearPercent, float? defaultCooldownSeconds, params string[] valuablePrefabNames)
 	{
 		Id = id;
+		EnabledKey = "charm." + id + ".enabled";
+		WearKey = "charm." + id + ".wear";
+		CooldownKey = "charm." + id + ".cooldown";
 		DisplayName = displayName;
 		DefaultWearPercent = defaultWearPercent;
 		DefaultCooldownSeconds = defaultCooldownSeconds;
@@ -80,14 +83,14 @@ public abstract class Charm
 	}
 
 	/// <summary>True when the host (or you, in singleplayer) has this charm switched on.</summary>
-	public bool IsEnabled => HostSettings.GetBool(Key("enabled"), enabledEntry?.Value ?? true);
+	public bool IsEnabled => HostSettings.GetBool(EnabledKey, enabledEntry?.Value ?? true);
 
 	/// <summary>Wear per use as the host configured it, already multiplied by the global wear setting.</summary>
-	public float WearPercent => Mathf.Clamp(HostSettings.GetFloat(Key("wear"), wearEntry?.Value ?? DefaultWearPercent), 0f, MaxWearPercent) * ConfigurationController.WearMultiplier;
+	public float WearPercent => Mathf.Clamp(HostSettings.GetFloat(WearKey, wearEntry?.Value ?? DefaultWearPercent), 0f, MaxWearPercent) * ConfigurationController.WearMultiplier;
 
 	/// <summary>The pause between uses as the host configured it; 0 when the charm has none.</summary>
 	public float CooldownSeconds => DefaultCooldownSeconds.HasValue
-		? Mathf.Clamp(HostSettings.GetFloat(Key("cooldown"), cooldownEntry?.Value ?? DefaultCooldownSeconds.Value), 0f, MaxCooldownSeconds)
+		? Mathf.Clamp(HostSettings.GetFloat(CooldownKey, cooldownEntry?.Value ?? DefaultCooldownSeconds.Value), 0f, MaxCooldownSeconds)
 		: 0f;
 
 	/// <summary>True while the local player carries a valuable that grants this charm and everything is switched on.</summary>
@@ -338,6 +341,14 @@ public abstract class Charm
 
 	internal bool LocalEnabled => enabledEntry?.Value ?? true;
 
+	/// <summary>Network keys of this charm's settings, built once: they are read many times per second while the charm is active.</summary>
+	internal string EnabledKey { get; }
+
+	internal string WearKey { get; }
+
+	internal string CooldownKey { get; }
+
+	/// <summary>Key of a custom setting (built once per setting by <see cref="CharmSetting"/>).</summary>
 	internal string Key(string name) => "charm." + Id + "." + name;
 
 	internal void Carry(ValuableObject valuable)

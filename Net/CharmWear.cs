@@ -116,6 +116,6 @@ internal sealed class CharmWear : MonoBehaviourPun
 	/// <summary>The charm this valuable belongs to, used to route debug log lines to the right charm's debug switch.</summary>
 	private Charm? OwnerCharm()
 	{
-		return valuable != null ? CharmsApi.FindFor(valuable.name.Replace("(Clone)", string.Empty).Trim()) : null;
+		return valuable != null ? CharmsApi.CharmOf(valuable) : null;
 	}
 }
