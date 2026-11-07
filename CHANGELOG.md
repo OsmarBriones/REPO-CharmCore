@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Added
-- While a cooldown is shown on a slot, the stored valuable's value gets smaller (keeping its place) and the seconds move to the top edge so they do not overlap; the value returns to its normal size when the cooldown ends.
+- While a cooldown is shown on a slot, the seconds and the stored valuable's value are fitted to the visible part of the slot (seconds above, value below, each auto-sized to use as much room as possible) so they are as large as the slot allows and do not overlap; the value returns to its normal size and place when the cooldown ends.
 - The cooldown veil no longer covers the stored valuable's value: the veil is drawn under the value label and the seconds are shown small at the top of the slot.
 - Quiet wear: continuous wear (`WearForSeconds`, and `WearValuable`/`Wear` with `quiet: true`) no longer plays the game's break sound, smoke and floating number on every step; it only subtracts the value and destroys the valuable at the usual 15% limit. Per-use wear is unchanged.
 - `Debug.SpawnNow` switch for every charm: with `DebugMode` on, setting it to `true` during a level places the charm's valuable near you and turns the switch back off.

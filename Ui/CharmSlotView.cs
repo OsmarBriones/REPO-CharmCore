@@ -9,8 +9,9 @@ namespace CharmCore.Ui;
 
 /// <summary>
 /// Draws a charm's cooldown on its inventory slot: a dark veil over the picture that empties as the cooldown runs
-/// out, with the seconds left in the middle. Attached to each <see cref="InventorySpot"/>; nothing shows when the
-/// charm in the slot has no cooldown running.
+/// out, with the seconds left. Attached to each <see cref="InventorySpot"/>; nothing shows when the charm in the slot has
+/// no cooldown running. While a cooldown shows, the seconds (upper part) and Pockets' value label (lower part) are fitted
+/// to the visible part of the slot with auto-sizing, so both use as much of the tiny slot as possible.
 /// </summary>
 internal sealed class CharmSlotView : MonoBehaviour
 {
@@ -20,11 +21,25 @@ internal sealed class CharmSlotView : MonoBehaviour
 	private Image? veil;
 	private TextMeshProUGUI? label;
 
-	// While a cooldown is shown, Pockets' value label (the stored valuable's value) is made smaller, keeping its place, and the
-	// seconds go to the top edge, so the two texts do not overlap. The value must not move down: the slots are at the very bottom of
-	// the screen and anything lower than Pockets' own spot is cut off.
-	private bool compact;
-	private float valueFontOriginal;
+	private readonly Vector3[] corners = new Vector3[4];
+
+	// Pockets' value label while this view lays it out (its original look is saved and restored when the cooldown ends).
+	private TextMeshProUGUI? valueLabel;
+	private LabelState valueOriginal;
+	private bool valueLaidOut;
+
+	private struct LabelState
+	{
+		internal Vector2 AnchorMin;
+		internal Vector2 AnchorMax;
+		internal Vector2 Pivot;
+		internal Vector2 SizeDelta;
+		internal Vector2 AnchoredPosition;
+		internal float FontSize;
+		internal bool AutoSizing;
+		internal float FontSizeMin;
+		internal float FontSizeMax;
+	}
 
 	internal static CharmSlotView GetOrAdd(InventorySpot spot)
 	{
@@ -47,7 +62,7 @@ internal sealed class CharmSlotView : MonoBehaviour
 		if (spot == null || !CharmTracker.TryGetCooldown(spot.inventorySpotIndex, out float remaining, out float total))
 		{
 			SetVisible(false);
-			SetCompact(false);
+			RestoreValueLabel();
 			return;
 		}
 
@@ -61,7 +76,7 @@ internal sealed class CharmSlotView : MonoBehaviour
 			? Mathf.CeilToInt(remaining).ToString(CultureInfo.InvariantCulture)
 			: remaining.ToString("0.0", CultureInfo.InvariantCulture);
 		SetVisible(true);
-		SetCompact(true);
+		LayoutTexts();
 	}
 
 	/// <summary>The value label Pockets draws on this slot, when it exists.</summary>
@@ -73,38 +88,120 @@ internal sealed class CharmSlotView : MonoBehaviour
 	}
 
 	/// <summary>
-	/// While a cooldown is shown the slot has little room: the value gets smaller (in place) and the seconds sit at the upper
-	/// edge. When the cooldown ends the value goes back to its normal size.
+	/// Fits the seconds and the stored valuable's value to the visible part of the slot (the screen cuts the slots off at the bottom):
+	/// the seconds in the upper part, the value in the lower part, each auto-sized to fill its box.
 	/// </summary>
-	private void SetCompact(bool on)
+	private void LayoutTexts()
 	{
-		if (on == compact)
+		RectTransform? slotRect = spot.GetComponent<RectTransform>();
+		Canvas? canvas = spot.GetComponentInParent<Canvas>();
+		if (slotRect == null || label == null)
 		{
 			return;
 		}
+
+		Camera? camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+		slotRect.GetWorldCorners(corners);
+		Vector2 bottomLeft = RectTransformUtility.WorldToScreenPoint(camera, corners[0]);
+		Vector2 topRight = RectTransformUtility.WorldToScreenPoint(camera, corners[2]);
+		// The visible area: the slot clipped to the screen (or to the HUD camera's picture when the canvas renders through a camera).
+		float screenWidth = camera != null ? camera.pixelWidth : Screen.width;
+		float screenHeight = camera != null ? camera.pixelHeight : Screen.height;
+		float left = Mathf.Max(bottomLeft.x, 0f);
+		float right = Mathf.Min(topRight.x, screenWidth);
+		float top = Mathf.Min(topRight.y, screenHeight);
+		float bottom = Mathf.Max(bottomLeft.y, 0f);
+		SlotLayout.Split(left, right, top, bottom, out LabelBox secondsBox, out LabelBox valueBox);
+		if (secondsBox.Width <= 0f)
+		{
+			return;
+		}
+
+		Place(label, secondsBox, camera);
 
 		TextMeshProUGUI? value = FindValueLabel();
-		if (on)
+		if (value == null)
 		{
-			if (value == null || label == null || spot.inventoryIcon == null)
-			{
-				return;
-			}
-
-			RectTransform iconRect = spot.inventoryIcon.rectTransform;
-			valueFontOriginal = value.fontSize;
-			value.fontSize = valueFontOriginal * SlotLayout.CompactValueFontScale;
-			label.rectTransform.anchoredPosition = iconRect.anchoredPosition + new Vector2(0f, iconRect.rect.yMax - SlotLayout.SecondsFromTop(iconRect.rect.height));
-			compact = true;
 			return;
 		}
 
-		if (value != null && valueFontOriginal > 0f)
+		if (!valueLaidOut)
 		{
-			value.fontSize = valueFontOriginal;
+			valueLabel = value;
+			valueOriginal = Capture(value);
+			valueLaidOut = true;
 		}
 
-		compact = false;
+		Place(value, valueBox, camera);
+	}
+
+	/// <summary>Puts a text in a screen-space box and lets it auto-size to the largest font that fits.</summary>
+	private static void Place(TextMeshProUGUI text, LabelBox box, Camera? camera)
+	{
+		RectTransform rect = text.rectTransform;
+		rect.anchorMin = new Vector2(0.5f, 0.5f);
+		rect.anchorMax = new Vector2(0.5f, 0.5f);
+		rect.pivot = new Vector2(0.5f, 0.5f);
+		Vector3 scale = rect.lossyScale;
+		float scaleX = scale.x > 0.0001f ? scale.x : 1f;
+		float scaleY = scale.y > 0.0001f ? scale.y : 1f;
+		rect.sizeDelta = new Vector2(box.Width / scaleX, box.Height / scaleY);
+		if (rect.parent is RectTransform parent
+			&& RectTransformUtility.ScreenPointToWorldPointInRectangle(parent, new Vector2(box.CenterX, box.CenterY), camera, out Vector3 world))
+		{
+			rect.position = world;
+		}
+
+		text.alignment = TextAlignmentOptions.Center;
+		text.textWrappingMode = TextWrappingModes.NoWrap;
+		text.enableAutoSizing = true;
+		text.fontSizeMin = 1f;
+		text.fontSizeMax = Mathf.Max(box.Height / scaleY, 2f);
+	}
+
+	private static LabelState Capture(TextMeshProUGUI text)
+	{
+		RectTransform rect = text.rectTransform;
+		return new LabelState
+		{
+			AnchorMin = rect.anchorMin,
+			AnchorMax = rect.anchorMax,
+			Pivot = rect.pivot,
+			SizeDelta = rect.sizeDelta,
+			AnchoredPosition = rect.anchoredPosition,
+			FontSize = text.fontSize,
+			AutoSizing = text.enableAutoSizing,
+			FontSizeMin = text.fontSizeMin,
+			FontSizeMax = text.fontSizeMax,
+		};
+	}
+
+	/// <summary>Gives Pockets' value label back its own size, position and font when the cooldown ends.</summary>
+	private void RestoreValueLabel()
+	{
+		if (!valueLaidOut)
+		{
+			return;
+		}
+
+		valueLaidOut = false;
+		TextMeshProUGUI? value = valueLabel;
+		valueLabel = null;
+		if (value == null)
+		{
+			return;
+		}
+
+		RectTransform rect = value.rectTransform;
+		rect.anchorMin = valueOriginal.AnchorMin;
+		rect.anchorMax = valueOriginal.AnchorMax;
+		rect.pivot = valueOriginal.Pivot;
+		rect.sizeDelta = valueOriginal.SizeDelta;
+		rect.anchoredPosition = valueOriginal.AnchoredPosition;
+		value.enableAutoSizing = valueOriginal.AutoSizing;
+		value.fontSizeMin = valueOriginal.FontSizeMin;
+		value.fontSizeMax = valueOriginal.FontSizeMax;
+		value.fontSize = valueOriginal.FontSize;
 	}
 
 	private void SetVisible(bool visible)
@@ -160,18 +257,13 @@ internal sealed class CharmSlotView : MonoBehaviour
 		label = Instantiate(template, iconRect.parent);
 		label.name = "CharmCooldownSeconds";
 		label.alignment = TextAlignmentOptions.Center;
-		label.enableAutoSizing = false;
+		label.enableAutoSizing = true;
 		label.textWrappingMode = TextWrappingModes.NoWrap;
 		label.overflowMode = TextOverflowModes.Overflow;
-		label.fontSize = template.fontSize * SlotLayout.SecondsFontScale;
 		label.color = Color.white;
 		label.raycastTarget = false;
 		label.outlineWidth = 0.3f;
 		label.outlineColor = new Color32(0, 0, 0, 255);
-
-		// The seconds sit inside the upper edge of the picture; the stored valuable's value is at the lower edge (Pockets).
-		float inset = label.fontSize * 0.7f;
-		label.rectTransform.anchoredPosition = iconRect.anchoredPosition + new Vector2(0f, iconRect.rect.yMax - inset);
 		return true;
 	}
 

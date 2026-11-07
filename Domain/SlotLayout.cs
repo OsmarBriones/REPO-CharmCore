@@ -1,23 +1,64 @@
 namespace CharmCore.Domain;
 
+/// <summary>A rectangle in screen pixels (y grows upwards): its centre and its size.</summary>
+internal readonly struct LabelBox
+{
+	internal LabelBox(float centerX, float centerY, float width, float height)
+	{
+		CenterX = centerX;
+		CenterY = centerY;
+		Width = width;
+		Height = height;
+	}
+
+	internal float CenterX { get; }
+
+	internal float CenterY { get; }
+
+	internal float Width { get; }
+
+	internal float Height { get; }
+
+	internal float Top => CenterY + Height / 2f;
+
+	internal float Bottom => CenterY - Height / 2f;
+}
+
 /// <summary>
-/// Layout numbers for a slot that shows both the stored valuable's value (Pockets, near the lower edge) and a cooldown's seconds
-/// (CharmCore). The slot is tiny, so while a cooldown runs the value gets smaller (it keeps its place: the slots are at the very
-/// bottom of the screen and anything lower is cut off) and the seconds go to the upper edge. Game-free so it can be unit tested.
+/// Splits the VISIBLE part of an inventory slot between the cooldown's seconds (upper box) and the stored valuable's value
+/// (lower box), so both texts use as much of the slot as possible without touching each other. The slots sit at the very
+/// bottom of the screen and the screen cuts them off, so the caller passes the visible rectangle (the slot clipped to the
+/// screen). Each box is meant for an auto-sizing text, which then picks the largest font that fits. Game-free so it can be
+/// unit tested.
 /// </summary>
 internal static class SlotLayout
 {
-	/// <summary>Share of its normal size the value label has while a cooldown is shown.</summary>
-	internal const float CompactValueFontScale = 0.75f;
+	private const float WidthShare = 0.96f;
+	private const float SecondsHeightShare = 0.40f;
+	private const float ValueHeightShare = 0.46f;
+	private const float TopMargin = 0.04f;
+	private const float BottomMargin = 0.02f;
 
-	/// <summary>Share of the template font size used for the cooldown seconds.</summary>
-	internal const float SecondsFontScale = 0.5f;
-
-	private const float EdgeMargin = 0.22f;
-
-	/// <summary>Distance of the seconds' centre from the top edge of the picture, for a picture of the given height.</summary>
-	internal static float SecondsFromTop(float pictureHeight)
+	/// <summary>
+	/// Computes the two boxes inside the rectangle between <paramref name="left"/>/<paramref name="right"/> and
+	/// <paramref name="bottom"/>/<paramref name="top"/> (screen pixels). A rectangle without area gives empty boxes.
+	/// </summary>
+	internal static void Split(float left, float right, float top, float bottom, out LabelBox seconds, out LabelBox value)
 	{
-		return pictureHeight <= 0f ? 0f : pictureHeight * EdgeMargin;
+		float height = top - bottom;
+		float fullWidth = right - left;
+		if (height <= 0f || fullWidth <= 0f)
+		{
+			seconds = new LabelBox(left, bottom, 0f, 0f);
+			value = new LabelBox(left, bottom, 0f, 0f);
+			return;
+		}
+
+		float centerX = (left + right) / 2f;
+		float width = fullWidth * WidthShare;
+		float secondsHeight = height * SecondsHeightShare;
+		float valueHeight = height * ValueHeightShare;
+		seconds = new LabelBox(centerX, top - height * TopMargin - secondsHeight / 2f, width, secondsHeight);
+		value = new LabelBox(centerX, bottom + height * BottomMargin + valueHeight / 2f, width, valueHeight);
 	}
 }

@@ -84,6 +84,10 @@
       <HintPath>$(RepoManaged)\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(RepoManaged)\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>$(RepoManaged)\Unity.TextMeshPro.dll</HintPath>
       <Private>false</Private>
