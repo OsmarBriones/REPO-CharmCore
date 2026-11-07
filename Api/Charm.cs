@@ -24,6 +24,7 @@ public abstract class Charm
 	private readonly List<ValuableObject> carried = new List<ValuableObject>();
 	private readonly List<CharmSetting> settings = new List<CharmSetting>();
 	private CooldownTimer cooldown;
+	private float pendingWear;
 
 	private ConfigEntry<bool>? enabledEntry;
 	private ConfigEntry<float>? wearEntry;
@@ -45,6 +46,12 @@ public abstract class Charm
 	}
 
 	public string Id { get; }
+
+	/// <summary>
+	/// Set to true in the constructor when <c>WearPercent</c> means percent per SECOND instead of per use (the config
+	/// description says so). Such a charm calls <see cref="WearForSeconds"/> while its condition holds.
+	/// </summary>
+	protected bool WearsPerSecond { get; set; }
 
 	public string DisplayName { get; }
 
@@ -112,6 +119,74 @@ public abstract class Charm
 		return true;
 	}
 
+	/// <summary>
+	/// For charms that wear continuously: call it every frame while the power is working with the frame time. It adds up
+	/// <see cref="WearPercent"/> per second and asks for the wear in steps of at least 1%, so the network and the valuable's
+	/// whole-dollar value are not flooded.
+	/// </summary>
+	public void WearForSeconds(float deltaSeconds)
+	{
+		if (!IsActive || deltaSeconds <= 0f)
+		{
+			return;
+		}
+
+		pendingWear += WearPercent * deltaSeconds;
+		if (pendingWear >= 1f)
+		{
+			float step = pendingWear;
+			pendingWear = 0f;
+			Wear(step);
+		}
+	}
+
+	/// <summary>
+	/// Asks the host to do something only the host may do (move a valuable, hurt a monster, spawn an enemy). The host checks
+	/// that the sender carries this charm and calls <see cref="OnHostRequest"/>. Alone or as host it runs immediately.
+	/// </summary>
+	public void SendToHost(string action, params object[] args)
+	{
+		if (IsActive)
+		{
+			HostRequests.Send(this, action, args);
+		}
+	}
+
+	/// <summary>Runs on the host for every request sent with <see cref="SendToHost"/> by a player who carries this charm.</summary>
+	protected virtual void OnHostRequest(PlayerAvatar sender, string action, object[] args)
+	{
+	}
+
+	internal void HandleHostRequest(PlayerAvatar sender, string action, object[] args)
+	{
+		try
+		{
+			OnHostRequest(sender, action, args);
+		}
+		catch (Exception exception)
+		{
+			CharmCorePlugin.Logger.LogError($"Charm '{Id}' threw handling the host request '{action}': {exception}");
+		}
+	}
+
+	/// <summary>
+	/// Wears a specific carried valuable by a share of its original value. For effects the host applies for other players:
+	/// call it on the host with the valuable that <see cref="CharmsApi.ForEachCarrier"/> gave you.
+	/// </summary>
+	public void WearValuable(ValuableObject valuable, float wearPercent)
+	{
+		if (valuable == null || wearPercent <= 0f)
+		{
+			return;
+		}
+
+		CharmWear? wear = valuable.GetComponent<CharmWear>();
+		if (wear != null)
+		{
+			wear.RequestWear(wearPercent);
+		}
+	}
+
 	/// <summary>Wears the carried valuable down by a share of its original value without touching the cooldown.</summary>
 	public void Wear(float wearPercent)
 	{
@@ -161,7 +236,7 @@ public abstract class Charm
 			section,
 			"WearPercent",
 			Mathf.Clamp(DefaultWearPercent, 0f, MaxWearPercent),
-			new ConfigDescription("How much of the valuable's original value each use wears away, in percent (0 to 100). The host's choice applies to everyone.", new AcceptableValueRange<float>(0f, MaxWearPercent)));
+			new ConfigDescription(WearsPerSecond ? "How much of the valuable's original value is worn away each second the power is working, in percent (0 to 100). The host's choice applies to everyone." : "How much of the valuable's original value each use wears away, in percent (0 to 100). The host's choice applies to everyone.", new AcceptableValueRange<float>(0f, MaxWearPercent)));
 		if (DefaultCooldownSeconds.HasValue)
 		{
 			cooldownEntry = config.Bind(
@@ -222,6 +297,7 @@ public abstract class Charm
 		if (carried.Count == 0)
 		{
 			cooldown.Reset();
+			pendingWear = 0f;
 			Guard(OnDeactivated, nameof(OnDeactivated));
 		}
 	}
@@ -235,6 +311,7 @@ public abstract class Charm
 
 		carried.Clear();
 		cooldown.Reset();
+		pendingWear = 0f;
 		Guard(OnDeactivated, nameof(OnDeactivated));
 	}
 

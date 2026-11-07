@@ -87,6 +87,22 @@ public class GameContractTests
 	}
 
 	[TestMethod]
+	public void PlayerHealth_HasTheMembersTheHurtHookUses()
+	{
+		RequireMethod("PlayerHealth", "Hurt", 4);
+		RequireMethod("PlayerHealth", "InvincibleSet", 1);
+		RequireField("PlayerHealth", "health");
+		RequireField("PlayerHealth", "maxHealth");
+		RequireField("PlayerHealth", "godMode");
+		RequireField("PlayerHealth", "invincibleTimer");
+		RequireField("PlayerHealth", "isMenuAvatar");
+		RequireField("PlayerHealth", "playerAvatar");
+		RequireField("GameDirector", "PlayerList");
+		RequireField("GameDirector", "currentState");
+		RequireField("PlayerAvatar", "deadSet");
+	}
+
+	[TestMethod]
 	public void DebugSpawner_HasTheMembersItUses()
 	{
 		RequireField("LevelGenerator", "Instance");

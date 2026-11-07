@@ -30,6 +30,13 @@ It does not implement any power. Powers are local to the carrier (energy, damage
 
 `ConfigurationController` holds `Enabled` and `WearMultiplier`. Each charm adds `Enabled`, `WearPercent`, `CooldownSeconds` and its own `CharmSetting`s. The master publishes all of them as room custom properties (`HostSettings.Publish`) on level start, when a setting changes and when the master changes; clients read them on demand and alone a machine uses its own values.
 
+## Shared hooks and helpers for charm mods
+
+- **Player damage (`CharmsApi.OnPlayerHurting`).** `PlayerHealth_Hurt_Patch` is the only patch on `PlayerHealth.Hurt` (which acts only on the damaged player's own machine). It checks the same conditions the game checks first (not invincible, not dead, not god mode, game running), so handlers only see hits that would really land, and passes a `PlayerHurtContext` through the handlers in priority order (suggested: 0 cancelling effects, 10 last-chance saves, 20 damage reduction). A handler may lower `Damage`, set `Cancel`, or ask for `InvincibleSecondsAfter`.
+- **Wear over time (`Charm.WearForSeconds`).** For charms whose `WearPercent` is per second (set `WearsPerSecond` in the constructor): it accumulates and asks for wear in steps of at least 1%.
+- **Host effects.** Some powers only work on the host (moving a valuable, hurting a monster, spawning an enemy). Two ways: the host applies the effect itself for every carrier with `CharmsApi.ForEachCarrier` / `CarriedBy` (Pockets tracks every player's pockets on every machine) and wears with `Charm.WearValuable`; or the owner sends a request with `Charm.SendToHost(action, args)` (Photon event 183, delivered to the master, which checks the sender carries the charm and calls `OnHostRequest`).
+- **Wear modifiers (`CharmsApi.OnWearing`).** A `WearContext` is offered to handlers on the host before value is removed; a charm may lower `Loss` for valuables carried by a player (for example a charm that protects other charms). `CharmsApi.CarrierOf` finds who carries a valuable.
+
 ## Debug mode (every charm)
 
 Each charm gets a local `Debug.DebugMode` setting (off by default) in its own config file, bound by `Charm.Bind`. While it is on:

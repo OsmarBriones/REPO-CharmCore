@@ -94,6 +94,14 @@ internal sealed class CharmWear : MonoBehaviourPun
 			return;
 		}
 
+		WearContext context = new WearContext(valuable, CharmsApi.CarrierOf(valuable), lost);
+		CharmsApi.RunWearHandlers(context);
+		lost = context.Loss < 0f ? 0f : System.Math.Min(context.Loss, valuable.dollarValueCurrent);
+		if (lost <= 0f)
+		{
+			return;
+		}
+
 		OwnerCharm()?.LogDebug($"Wear {valuable.name}: -{lost:0} (original {valuable.dollarValueOriginal:0}, current {valuable.dollarValueCurrent:0}, {percent:0.#}%)");
 		detector.Break(lost, at, detector.breakLevelLight, true);
 		OwnerCharm()?.LogDebug($"After wear {valuable.name}: current {valuable.dollarValueCurrent:0}, dead {valuable.physGrabObject != null && valuable.physGrabObject.dead}");
