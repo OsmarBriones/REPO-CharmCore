@@ -83,6 +83,17 @@ public class GameContractTests
 		RequireField("PlayerAvatar", "instance");
 		RequireMethod("SemiFunc", "IsMultiplayer", 0);
 		RequireMethod("SemiFunc", "RunIsLevel", 0);
+		RequireMethod("SemiFunc", "IsMasterClientOrSingleplayer", 0);
+	}
+
+	[TestMethod]
+	public void DebugSpawner_HasTheMembersItUses()
+	{
+		RequireField("LevelGenerator", "Instance");
+		RequireField("LevelGenerator", "Generated");
+		RequireMethod("SemiFunc", "LayerMaskGetVisionObstruct", 0);
+		RequireField("PhysGrabObject", "dead");
+		RequireMethod("PhysGrabObject", "DestroyPhysGrabObject", 0);
 	}
 
 	// ---- Helpers ----

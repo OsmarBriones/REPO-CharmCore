@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Debug mode for every charm (`Debug.DebugMode`, off by default): its valuable appears on the floor in front of you when a level starts, and detailed log lines are written. Debug-only log lines moved behind it.
 - Charm engine: register a `Charm` per valuable, active while the local player carries it in a Pockets slot.
 - Wear: each use wears the valuable down through the game's own break routine, applied by the host.
 - Cooldown shown on the pocket slot (dark veil that empties, plus seconds left).

@@ -16,8 +16,20 @@ internal sealed class CharmTracker : MonoBehaviour
 	private static readonly ValuableObject?[] SlotValuables = new ValuableObject?[SlotCount];
 	private static readonly Charm?[] SlotCharms = new Charm?[SlotCount];
 
+	private static CharmTracker? instance;
+
+	/// <summary>Starts the debug spawner for the level that is loading (it does nothing unless some charm has debug mode on).</summary>
+	internal static void StartDebugSpawn()
+	{
+		if (instance != null)
+		{
+			instance.StartCoroutine(DebugSpawner.Run());
+		}
+	}
+
 	private void OnEnable()
 	{
+		instance = this;
 		PocketsApi.Stored += OnStored;
 		PocketsApi.Removed += OnRemoved;
 	}

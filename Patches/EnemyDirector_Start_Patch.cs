@@ -21,5 +21,6 @@ internal static class EnemyDirector_Start_Patch
 		ConfigurationController.Reload();
 		CharmTracker.Clear();
 		HostSettings.Publish();
+		CharmTracker.StartDebugSpawn();
 	}
 }

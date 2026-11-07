@@ -1,3 +1,4 @@
+using CharmCore.Api;
 using CharmCore.Domain;
 using Photon.Pun;
 using Pockets.Api;
@@ -45,7 +46,7 @@ internal sealed class CharmWear : MonoBehaviourPun
 		else if (Time.time - deadSince > 0.5f)
 		{
 			deadSince = -1f;
-			CharmCorePlugin.Logger.LogInfo($"{valuable.name} is worn out in a pocket: destroying it");
+			OwnerCharm()?.LogDebug($"{valuable.name} is worn out in a pocket: destroying it");
 			grabObject.DestroyPhysGrabObject();
 		}
 	}
@@ -93,8 +94,14 @@ internal sealed class CharmWear : MonoBehaviourPun
 			return;
 		}
 
-		CharmCorePlugin.Logger.LogInfo($"Wear {valuable.name}: -{lost:0} (original {valuable.dollarValueOriginal:0}, current {valuable.dollarValueCurrent:0}, {percent:0.#}%)");
+		OwnerCharm()?.LogDebug($"Wear {valuable.name}: -{lost:0} (original {valuable.dollarValueOriginal:0}, current {valuable.dollarValueCurrent:0}, {percent:0.#}%)");
 		detector.Break(lost, at, detector.breakLevelLight, true);
-		CharmCorePlugin.Logger.LogInfo($"After wear {valuable.name}: current {valuable.dollarValueCurrent:0}, dead {valuable.physGrabObject != null && valuable.physGrabObject.dead}");
+		OwnerCharm()?.LogDebug($"After wear {valuable.name}: current {valuable.dollarValueCurrent:0}, dead {valuable.physGrabObject != null && valuable.physGrabObject.dead}");
+	}
+
+	/// <summary>The charm this valuable belongs to, used to route debug log lines to the right charm's debug switch.</summary>
+	private Charm? OwnerCharm()
+	{
+		return valuable != null ? CharmsApi.FindFor(valuable.name.Replace("(Clone)", string.Empty).Trim()) : null;
 	}
 }

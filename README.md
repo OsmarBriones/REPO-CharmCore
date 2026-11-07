@@ -34,6 +34,8 @@ All settings are in `com.osmar.CharmCore.cfg` inside `BepInEx/config`. Each Char
 - `Enabled` (default `true`): turn every charm on or off. The host's choice applies to everyone.
 - `WearMultiplier` (default `1`): scales how fast every charm wears its valuable down. `0.5` halves it, `2` doubles it. The host's choice applies to everyone.
 
+Every Charm mod also has a `Debug` section with `DebugMode` (default `false`). For testing: when a level starts, that charm's valuable is placed on the floor in front of you, and extra log lines are written. It only places the valuable if you are the host or playing alone.
+
 ## For mod authors
 CharmCore exposes a small API: derive from `Charm`, register it with `CharmsApi.Register` and call `TryUse()` when your power triggers. See [ARCHITECTURE.md](https://github.com/OsmarBriones/REPO-CharmCore/blob/master/ARCHITECTURE.md).
 

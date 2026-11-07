@@ -22,6 +22,7 @@ public abstract class Charm
 	private ConfigEntry<bool>? enabledEntry;
 	private ConfigEntry<float>? wearEntry;
 	private ConfigEntry<float>? cooldownEntry;
+	private ConfigEntry<bool>? debugEntry;
 
 	/// <param name="id">Short stable id, used in config sections and network keys (for example "CoffeeCup").</param>
 	/// <param name="displayName">Name shown in logs.</param>
@@ -46,6 +47,21 @@ public abstract class Charm
 	public float DefaultWearPercent { get; }
 
 	public float? DefaultCooldownSeconds { get; }
+
+	/// <summary>
+	/// Debug mode of this charm (local setting, off by default): the charm's valuable is placed on the floor near the player
+	/// when a level starts, and detailed log lines are written. See <see cref="LogDebug"/>.
+	/// </summary>
+	public bool DebugMode => debugEntry?.Value ?? false;
+
+	/// <summary>Writes a log line that only matters while debugging; it appears only when <see cref="DebugMode"/> is on.</summary>
+	public void LogDebug(string message)
+	{
+		if (DebugMode)
+		{
+			CharmCorePlugin.Logger.LogInfo($"[{Id}] {message}");
+		}
+	}
 
 	/// <summary>True when the host (or you, in singleplayer) has this charm switched on.</summary>
 	public bool IsEnabled => HostSettings.GetBool(Key("enabled"), enabledEntry?.Value ?? true);
@@ -85,6 +101,7 @@ public abstract class Charm
 		}
 
 		cooldown.Start(Time.time, CooldownSeconds);
+		LogDebug($"Used: wear {wearPercent:0.#}%, cooldown {CooldownSeconds:0.#} s");
 		Wear(wearPercent);
 		return true;
 	}
@@ -145,6 +162,12 @@ public abstract class Charm
 			setting.Bind(config, section);
 		}
 
+		debugEntry = config.Bind(
+			"Debug",
+			"DebugMode",
+			false,
+			"For testing: when a level starts, this charm's valuable appears on the floor in front of you (host or singleplayer only), and detailed log lines are written. Local setting.");
+
 		config.SettingChanged += (_, _) => HostSettings.Publish();
 	}
 
@@ -166,6 +189,7 @@ public abstract class Charm
 		}
 
 		carried.Add(valuable);
+		LogDebug($"Carrying {valuable.name} (value {valuable.dollarValueCurrent:0}); active: {IsActive}");
 		if (carried.Count == 1)
 		{
 			Guard(OnActivated, nameof(OnActivated));
@@ -178,6 +202,8 @@ public abstract class Charm
 		{
 			return;
 		}
+
+		LogDebug($"No longer carrying {valuable.name}");
 
 		if (carried.Count == 0)
 		{
