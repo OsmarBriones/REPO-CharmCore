@@ -42,6 +42,7 @@ It does not implement any power. Powers are local to the carrier (energy, damage
 Each charm gets a local `Debug.DebugMode` setting (off by default) in its own config file, bound by `Charm.Bind`. While it is on:
 
 - `DebugSpawner` (started from `EnemyDirector.Start`) waits for `LevelGenerator.Generated` plus a short settle time, then, on the host or alone, places the charm's valuable on the floor about 2.5 m in front of the player (several debug charms are spread sideways). Valuable prefabs sit in the game's Resources folder (`Valuables/01 Tiny/<prefab>`), so they can be spawned in any level; no particular level is needed. In multiplayer it uses `PhotonNetwork.InstantiateRoomObject`, alone `Object.Instantiate`.
+- **`Debug.SpawnNow` switch** (bound next to `DebugMode` by `Charm.Bind`): `CharmTracker` calls `DebugSpawner.ServeSpawnSwitches` about once a second; a charm in debug mode re-reads its config file (so editing the file while the game runs works, as does an in-game config menu), and when the switch is on the valuable is placed near the player with `DebugSpawner.TryPlace` and the switch is turned back off. Without `DebugMode` the switch is just turned off with a warning; only the host or a singleplayer game can place valuables.
 - `Charm.LogDebug(message)` writes the log lines that only matter while debugging (carry/drop, each use, each wear step with original and current value, worn-out destruction). Normal use logs only startup, registration and Pockets' own store/release lines. Charm mods use `LogDebug` for their own detail.
 
 ## Hooks

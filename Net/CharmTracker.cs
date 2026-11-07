@@ -40,8 +40,16 @@ internal sealed class CharmTracker : MonoBehaviour
 		PocketsApi.Removed -= OnRemoved;
 	}
 
+	private float nextSpawnSwitchCheck;
+
 	private void Update()
 	{
+		if (Time.unscaledTime >= nextSpawnSwitchCheck)
+		{
+			nextSpawnSwitchCheck = Time.unscaledTime + 1f;
+			DebugSpawner.ServeSpawnSwitches();
+		}
+
 		// A worn-out valuable is destroyed without a pocket event; drop its charm when that happens.
 		for (int slot = 0; slot < SlotCount; slot++)
 		{

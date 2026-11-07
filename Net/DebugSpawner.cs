@@ -52,30 +52,80 @@ internal static class DebugSpawner
 				continue;
 			}
 
-			// One valuable per charm is enough for testing; the first prefab that can be found is used.
-			bool placed = false;
-			foreach (string prefabName in charm.ValuablePrefabNames)
+			if (TryPlace(charm, avatar, index))
 			{
-				string? path = FindResourcePath(prefabName);
-				if (path == null)
-				{
-					continue;
-				}
+				index++;
+			}
+		}
+	}
 
-				Vector3 position = FloorPosition(avatar, index);
-				if (Spawn(path, position, Quaternion.identity))
-				{
-					charm.LogDebug($"Debug mode: placed {prefabName} at {position}");
-					index++;
-					placed = true;
-				}
+	/// <summary>
+	/// Places one valuable of <paramref name="charm"/> on the floor in front of <paramref name="avatar"/>, sideways by
+	/// <paramref name="index"/> steps so several do not overlap. Host or singleplayer only (only the host can create world objects).
+	/// </summary>
+	internal static bool TryPlace(Charm charm, PlayerAvatar avatar, int index)
+	{
+		if (!SemiFunc.IsMasterClientOrSingleplayer())
+		{
+			charm.LogDebug("Only the host (or a singleplayer game) can place a valuable.");
+			return false;
+		}
 
-				break;
+		// One valuable per charm is enough for testing; the first prefab that can be found is used.
+		foreach (string prefabName in charm.ValuablePrefabNames)
+		{
+			string? path = FindResourcePath(prefabName);
+			if (path == null)
+			{
+				continue;
 			}
 
-			if (!placed)
+			Vector3 position = FloorPosition(avatar, index);
+			if (Spawn(path, position, Quaternion.identity))
 			{
-				CharmCorePlugin.Logger.LogWarning($"Debug mode: could not find a valuable to place for charm '{charm.Id}' ({string.Join(", ", charm.ValuablePrefabNames)}).");
+				charm.LogDebug($"Debug mode: placed {prefabName} at {position}");
+				return true;
+			}
+
+			break;
+		}
+
+		CharmCorePlugin.Logger.LogWarning($"Debug mode: could not find a valuable to place for charm '{charm.Id}' ({string.Join(", ", charm.ValuablePrefabNames)}).");
+		return false;
+	}
+
+	/// <summary>
+	/// The Debug.SpawnNow switch: called about once a second by the tracker. A charm in debug mode re-reads its config file
+	/// (so editing the file while the game runs works, as does an in-game config menu); when its switch is on, the valuable is
+	/// placed near the player and the switch is turned back off. Without debug mode the switch is just turned off.
+	/// </summary>
+	internal static void ServeSpawnSwitches()
+	{
+		int index = 0;
+		foreach (Charm charm in CharmsApi.All)
+		{
+			if (charm.DebugMode)
+			{
+				charm.ReloadConfigFile();
+			}
+
+			if (!charm.ConsumeSpawnRequest(out bool debugModeOn))
+			{
+				continue;
+			}
+
+			PlayerAvatar? avatar = PlayerAvatar.instance;
+			if (!debugModeOn)
+			{
+				CharmCorePlugin.Logger.LogWarning($"Charm '{charm.Id}': Debug.SpawnNow needs Debug.DebugMode to be on; the switch was turned off.");
+			}
+			else if (avatar == null || !SemiFunc.RunIsLevel())
+			{
+				CharmCorePlugin.Logger.LogWarning($"Charm '{charm.Id}': Debug.SpawnNow only works inside a level; the switch was turned off.");
+			}
+			else if (TryPlace(charm, avatar, index))
+			{
+				index++;
 			}
 		}
 	}

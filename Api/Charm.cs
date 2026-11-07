@@ -30,6 +30,9 @@ public abstract class Charm
 	private ConfigEntry<float>? wearEntry;
 	private ConfigEntry<float>? cooldownEntry;
 	private ConfigEntry<bool>? debugEntry;
+	private ConfigEntry<bool>? spawnNowEntry;
+	private ConfigFile? configFile;
+	private bool spawnRequested;
 
 	/// <param name="id">Short stable id, used in config sections and network keys (for example "CoffeeCup").</param>
 	/// <param name="displayName">Name shown in logs.</param>
@@ -257,7 +260,45 @@ public abstract class Charm
 			false,
 			"For testing: when a level starts, this charm's valuable appears on the floor in front of you (host or singleplayer only), and detailed log lines are written. Local setting.");
 
+		configFile = config;
+		spawnNowEntry = config.Bind(
+			"Debug",
+			"SpawnNow",
+			false,
+			"For testing, with DebugMode on: set to true while a level is running and this charm's valuable is placed near you right away (host or singleplayer only). The switch turns itself back off. Local setting.");
+		spawnNowEntry.SettingChanged += (_, _) =>
+		{
+			if (spawnNowEntry.Value)
+			{
+				spawnRequested = true;
+			}
+		};
+
 		config.SettingChanged += (_, _) => HostSettings.Publish();
+	}
+
+	/// <summary>Re-reads this charm's config file, so a switch changed in the file while the game runs is noticed.</summary>
+	internal void ReloadConfigFile()
+	{
+		configFile?.Reload();
+	}
+
+	/// <summary>True once when the Debug.SpawnNow switch was turned on; the switch is turned off again. <paramref name="debugModeOn"/> says whether DebugMode was on.</summary>
+	internal bool ConsumeSpawnRequest(out bool debugModeOn)
+	{
+		debugModeOn = DebugMode;
+		if (!spawnRequested && !(spawnNowEntry?.Value ?? false))
+		{
+			return false;
+		}
+
+		spawnRequested = false;
+		if (spawnNowEntry != null && spawnNowEntry.Value)
+		{
+			spawnNowEntry.Value = false;
+		}
+
+		return true;
 	}
 
 	internal IReadOnlyList<CharmSetting> Settings => settings;
