@@ -37,7 +37,7 @@ All settings are in `com.osmar.CharmCore.cfg` inside `BepInEx/config`. Each Char
 Every Charm mod also has a `Debug` section with `DebugMode` (default `false`). For testing: when a level starts, that charm's valuable is placed on the floor in front of you, and extra log lines are written. It only places the valuable if you are the host or playing alone.
 
 ## For mod authors
-CharmCore exposes a small API: derive from `Charm`, register it with `CharmsApi.Register` and call `TryUse()` when your power triggers. See [ARCHITECTURE.md](https://github.com/OsmarBriones/REPO-CharmCore/blob/master/ARCHITECTURE.md).
+CharmCore exposes a small API: derive from `Charm`, register it with `CharmsApi.Register` (this also gives your charm `Debug.DebugMode`) and call `TryUse()` when your power triggers. Write debug-only log lines with `Charm.LogDebug`. New charms are created with the `create-charm` skill of RepoKit, which starts them following these rules. See [ARCHITECTURE.md](https://github.com/OsmarBriones/REPO-CharmCore/blob/master/ARCHITECTURE.md).
 
 ## Issues & Bug Reports
 The official way to report issues, suggest improvements, or submit feedback is by opening an issue on the official GitHub repository:

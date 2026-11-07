@@ -12,7 +12,12 @@ namespace CharmCore.Net;
 /// </summary>
 internal static class DebugSpawner
 {
-	private const string TinyFolder = "Valuables/01 Tiny/";
+	/// <summary>The size folders of the game's valuables, so a charm may use a valuable of any size.</summary>
+	private static readonly string[] SizeFolders =
+	{
+		"01 Tiny", "02 Small", "03 Medium", "04 Big", "05 Wide", "06 Tall", "07 Very Tall",
+	};
+
 	private const float WaitForLevelSeconds = 60f;
 	private const float SettleSeconds = 2f;
 	private const float SpawnDistance = 2.5f;
@@ -47,20 +52,30 @@ internal static class DebugSpawner
 				continue;
 			}
 
+			// One valuable per charm is enough for testing; the first prefab that can be found is used.
+			bool placed = false;
 			foreach (string prefabName in charm.ValuablePrefabNames)
 			{
+				string? path = FindResourcePath(prefabName);
+				if (path == null)
+				{
+					continue;
+				}
+
 				Vector3 position = FloorPosition(avatar, index);
-				if (Spawn(TinyFolder + prefabName, position, Quaternion.identity))
+				if (Spawn(path, position, Quaternion.identity))
 				{
 					charm.LogDebug($"Debug mode: placed {prefabName} at {position}");
 					index++;
-				}
-				else
-				{
-					CharmCorePlugin.Logger.LogWarning($"Debug mode: could not spawn '{TinyFolder}{prefabName}'.");
+					placed = true;
 				}
 
 				break;
+			}
+
+			if (!placed)
+			{
+				CharmCorePlugin.Logger.LogWarning($"Debug mode: could not find a valuable to place for charm '{charm.Id}' ({string.Join(", ", charm.ValuablePrefabNames)}).");
 			}
 		}
 	}
@@ -97,6 +112,21 @@ internal static class DebugSpawner
 		}
 
 		return target;
+	}
+
+	/// <summary>Finds the Resources path of a valuable prefab by name, looking through every size folder.</summary>
+	private static string? FindResourcePath(string prefabName)
+	{
+		foreach (string folder in SizeFolders)
+		{
+			string path = "Valuables/" + folder + "/" + prefabName;
+			if (Resources.Load<GameObject>(path) != null)
+			{
+				return path;
+			}
+		}
+
+		return null;
 	}
 
 	private static bool Spawn(string resourcePath, Vector3 position, Quaternion rotation)
