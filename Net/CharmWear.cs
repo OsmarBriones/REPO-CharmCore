@@ -63,6 +63,7 @@ internal sealed class CharmWear : MonoBehaviourPun
 			return;
 		}
 
+		CharmCorePlugin.Logger.LogInfo($"Wear {valuable.name}: -{lost:0} (original {valuable.dollarValueOriginal:0}, current {valuable.dollarValueCurrent:0}, {percent:0.#}%)");
 		detector.Break(lost, at, detector.breakLevelLight, true);
 	}
 }
