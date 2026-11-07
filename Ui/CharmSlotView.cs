@@ -20,6 +20,11 @@ internal sealed class CharmSlotView : MonoBehaviour
 	private Image? veil;
 	private TextMeshProUGUI? label;
 
+	// While a cooldown is shown, Pockets' value label (the stored valuable's value) is made smaller and moved so the two texts do not overlap.
+	private bool compact;
+	private float valueFontOriginal;
+	private Vector2 valuePositionOriginal;
+
 	internal static CharmSlotView GetOrAdd(InventorySpot spot)
 	{
 		CharmSlotView? view = spot.GetComponent<CharmSlotView>();
@@ -41,6 +46,7 @@ internal sealed class CharmSlotView : MonoBehaviour
 		if (spot == null || !CharmTracker.TryGetCooldown(spot.inventorySpotIndex, out float remaining, out float total))
 		{
 			SetVisible(false);
+			SetCompact(false);
 			return;
 		}
 
@@ -54,6 +60,53 @@ internal sealed class CharmSlotView : MonoBehaviour
 			? Mathf.CeilToInt(remaining).ToString(CultureInfo.InvariantCulture)
 			: remaining.ToString("0.0", CultureInfo.InvariantCulture);
 		SetVisible(true);
+		SetCompact(true);
+	}
+
+	/// <summary>The value label Pockets draws on this slot, when it exists.</summary>
+	private TextMeshProUGUI? FindValueLabel()
+	{
+		Transform? parent = spot.noItem != null ? spot.noItem.transform.parent : null;
+		Transform? found = parent != null ? parent.Find("PocketValue") : null;
+		return found != null ? found.GetComponent<TextMeshProUGUI>() : null;
+	}
+
+	/// <summary>
+	/// While a cooldown is shown the slot has little room: the value gets smaller and sits at the lower edge, the seconds sit at
+	/// the upper edge. When the cooldown ends the value goes back to its normal size and place.
+	/// </summary>
+	private void SetCompact(bool on)
+	{
+		if (on == compact)
+		{
+			return;
+		}
+
+		TextMeshProUGUI? value = FindValueLabel();
+		if (on)
+		{
+			if (value == null || label == null || spot.inventoryIcon == null)
+			{
+				return;
+			}
+
+			RectTransform iconRect = spot.inventoryIcon.rectTransform;
+			valueFontOriginal = value.fontSize;
+			valuePositionOriginal = value.rectTransform.anchoredPosition;
+			value.fontSize = valueFontOriginal * SlotLayout.CompactValueFontScale;
+			value.rectTransform.anchoredPosition = iconRect.anchoredPosition + new Vector2(0f, iconRect.rect.yMin + SlotLayout.ValueFromBottom(iconRect.rect.height));
+			label.rectTransform.anchoredPosition = iconRect.anchoredPosition + new Vector2(0f, iconRect.rect.yMax - SlotLayout.SecondsFromTop(iconRect.rect.height));
+			compact = true;
+			return;
+		}
+
+		if (value != null)
+		{
+			value.fontSize = valueFontOriginal;
+			value.rectTransform.anchoredPosition = valuePositionOriginal;
+		}
+
+		compact = false;
 	}
 
 	private void SetVisible(bool visible)
@@ -112,7 +165,7 @@ internal sealed class CharmSlotView : MonoBehaviour
 		label.enableAutoSizing = false;
 		label.textWrappingMode = TextWrappingModes.NoWrap;
 		label.overflowMode = TextOverflowModes.Overflow;
-		label.fontSize = template.fontSize * 0.55f;
+		label.fontSize = template.fontSize * SlotLayout.SecondsFontScale;
 		label.color = Color.white;
 		label.raycastTarget = false;
 		label.outlineWidth = 0.3f;
