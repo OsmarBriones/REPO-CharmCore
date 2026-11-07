@@ -15,9 +15,39 @@ internal sealed class CharmWear : MonoBehaviourPun
 {
 	private ValuableObject valuable = null!;
 
+	private float deadSince = -1f;
+
 	private void Awake()
 	{
 		valuable = GetComponent<ValuableObject>();
+	}
+
+	private void Update()
+	{
+		// A valuable worn out in a pocket is marked dead by the game but may never be destroyed, because it is hidden
+		// and deactivated; it would stay in the slot forever. The master finishes the job after a short grace period.
+		if (valuable == null || !SemiFunc.IsMasterClientOrSingleplayer())
+		{
+			return;
+		}
+
+		PhysGrabObject? grabObject = valuable.physGrabObject;
+		if (grabObject == null || !grabObject.dead || !PocketsApi.IsPocketed(valuable))
+		{
+			deadSince = -1f;
+			return;
+		}
+
+		if (deadSince < 0f)
+		{
+			deadSince = Time.time;
+		}
+		else if (Time.time - deadSince > 0.5f)
+		{
+			deadSince = -1f;
+			CharmCorePlugin.Logger.LogInfo($"{valuable.name} is worn out in a pocket: destroying it");
+			grabObject.DestroyPhysGrabObject();
+		}
 	}
 
 	/// <summary>Asks for <paramref name="percent"/> of the original value to be worn away (the global multiplier is already included).</summary>
@@ -65,5 +95,6 @@ internal sealed class CharmWear : MonoBehaviourPun
 
 		CharmCorePlugin.Logger.LogInfo($"Wear {valuable.name}: -{lost:0} (original {valuable.dollarValueOriginal:0}, current {valuable.dollarValueCurrent:0}, {percent:0.#}%)");
 		detector.Break(lost, at, detector.breakLevelLight, true);
+		CharmCorePlugin.Logger.LogInfo($"After wear {valuable.name}: current {valuable.dollarValueCurrent:0}, dead {valuable.physGrabObject != null && valuable.physGrabObject.dead}");
 	}
 }
