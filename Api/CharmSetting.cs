@@ -21,16 +21,22 @@ public sealed class CharmSetting
 	{
 		this.owner = owner;
 		this.name = name;
-		this.defaultValue = defaultValue;
 		this.min = min;
 		this.max = max;
+		this.defaultValue = defaultValue < min ? min : defaultValue > max ? max : defaultValue;
 		this.description = description;
 	}
 
 	/// <summary>The value in force: the host's inside a room, this machine's otherwise.</summary>
-	public float Value => HostSettings.GetFloat(Key, LocalValue);
+	public float Value => Clamp(HostSettings.GetFloat(Key, LocalValue));
 
 	internal string Key => owner.Key(name);
+
+	/// <summary>Keeps a value inside the declared range, whatever the config file or the network delivered.</summary>
+	private float Clamp(float value)
+	{
+		return value < min ? min : value > max ? max : value;
+	}
 
 	internal float LocalValue => entry?.Value ?? defaultValue;
 

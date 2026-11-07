@@ -15,6 +15,12 @@ namespace CharmCore.Api;
 /// </summary>
 public abstract class Charm
 {
+	/// <summary>Valid range of the wear setting, in percent of the valuable's original value.</summary>
+	internal const float MaxWearPercent = 100f;
+
+	/// <summary>Longest cooldown a setting may ask for, in seconds.</summary>
+	internal const float MaxCooldownSeconds = 600f;
+
 	private readonly List<ValuableObject> carried = new List<ValuableObject>();
 	private readonly List<CharmSetting> settings = new List<CharmSetting>();
 	private CooldownTimer cooldown;
@@ -67,11 +73,11 @@ public abstract class Charm
 	public bool IsEnabled => HostSettings.GetBool(Key("enabled"), enabledEntry?.Value ?? true);
 
 	/// <summary>Wear per use as the host configured it, already multiplied by the global wear setting.</summary>
-	public float WearPercent => HostSettings.GetFloat(Key("wear"), wearEntry?.Value ?? DefaultWearPercent) * ConfigurationController.WearMultiplier;
+	public float WearPercent => Mathf.Clamp(HostSettings.GetFloat(Key("wear"), wearEntry?.Value ?? DefaultWearPercent), 0f, MaxWearPercent) * ConfigurationController.WearMultiplier;
 
 	/// <summary>The pause between uses as the host configured it; 0 when the charm has none.</summary>
 	public float CooldownSeconds => DefaultCooldownSeconds.HasValue
-		? HostSettings.GetFloat(Key("cooldown"), cooldownEntry?.Value ?? DefaultCooldownSeconds.Value)
+		? Mathf.Clamp(HostSettings.GetFloat(Key("cooldown"), cooldownEntry?.Value ?? DefaultCooldownSeconds.Value), 0f, MaxCooldownSeconds)
 		: 0f;
 
 	/// <summary>True while the local player carries a valuable that grants this charm and everything is switched on.</summary>
@@ -151,10 +157,18 @@ public abstract class Charm
 	{
 		string section = "Charm." + Id;
 		enabledEntry = config.Bind(section, "Enabled", true, "Turn this charm on or off. The host's choice applies to everyone.");
-		wearEntry = config.Bind(section, "WearPercent", DefaultWearPercent, "How much of the valuable's original value each use wears away, in percent. The host's choice applies to everyone.");
+		wearEntry = config.Bind(
+			section,
+			"WearPercent",
+			Mathf.Clamp(DefaultWearPercent, 0f, MaxWearPercent),
+			new ConfigDescription("How much of the valuable's original value each use wears away, in percent (0 to 100). The host's choice applies to everyone.", new AcceptableValueRange<float>(0f, MaxWearPercent)));
 		if (DefaultCooldownSeconds.HasValue)
 		{
-			cooldownEntry = config.Bind(section, "CooldownSeconds", DefaultCooldownSeconds.Value, "Pause between uses, in seconds. 0 means no pause. The host's choice applies to everyone.");
+			cooldownEntry = config.Bind(
+				section,
+				"CooldownSeconds",
+				Mathf.Clamp(DefaultCooldownSeconds.Value, 0f, MaxCooldownSeconds),
+				new ConfigDescription("Pause between uses, in seconds (0 to 600). 0 means no pause. The host's choice applies to everyone.", new AcceptableValueRange<float>(0f, MaxCooldownSeconds)));
 		}
 
 		foreach (CharmSetting setting in settings)
