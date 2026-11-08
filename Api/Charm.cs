@@ -56,8 +56,9 @@ public abstract class Charm
 	/// <summary>
 	/// Makes this charm a CHARGING charm: its power depends on how long the valuable has been in a pocket, so it cannot be
 	/// pocketed only at the moment of use. Call it in the constructor with the default seconds needed to charge fully; it adds the
-	/// host-synchronised setting <c>ChargeSeconds</c> (5 to 1800). The charge starts at 0 whenever the valuable is stored, grows
-	/// with time while it stays in a pocket and is reset to 0 by <see cref="CharmsApi.ConsumeCharge"/>. Use it for powers tied to an
+	/// host-synchronised setting <c>ChargeSeconds</c> (5 to 1800). The charge belongs to the VALUABLE: it starts at 0, grows with time
+	/// only while the valuable is stored in a pocket (anyone's), is kept when the valuable is taken out, continues for whoever stores
+	/// it next and is reset to 0 by <see cref="CharmsApi.ConsumeCharge"/>. Use it for powers tied to an
 	/// event that can be waited for (an extraction point completing), where otherwise the valuable could be stored at the last moment.
 	/// The slot shows the charge as a percentage and a veil that lifts as it charges.
 	/// </summary>

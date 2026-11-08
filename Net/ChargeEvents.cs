@@ -7,7 +7,7 @@ namespace CharmCore.Net;
 
 /// <summary>
 /// Tells every machine that a charging valuable was spent, so the owner's slot shows the empty charge as well. The host spends a
-/// charge (see <c>CharmsApi.ConsumeCharge</c>) and sends the valuable's PhotonView id; each receiver restarts that valuable's charge.
+/// charge (see <c>CharmsApi.ConsumeCharge</c>) and sends the valuable's PhotonView id; each receiver empties that valuable's charge.
 /// Alone there is nothing to tell: the local reset is enough.
 /// </summary>
 internal static class ChargeEvents
@@ -43,7 +43,7 @@ internal static class ChargeEvents
 		ValuableObject? valuable = view != null ? view.GetComponent<ValuableObject>() : null;
 		if (valuable != null)
 		{
-			CharmTracker.StartCharge(valuable);
+			CharmTracker.SpendCharge(valuable);
 		}
 	}
 }

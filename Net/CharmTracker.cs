@@ -20,15 +20,45 @@ internal sealed class CharmTracker : MonoBehaviour
 
 	private static CharmTracker? instance;
 
-	/// <summary>When each charging valuable (by instance id on this machine) started charging: the moment it was stored, or last spent.</summary>
-	private static readonly Dictionary<int, float> ChargeStarts = new Dictionary<int, float>();
+	/// <summary>
+	/// The charge of each charging valuable (by instance id on this machine). It belongs to the valuable: it grows while the valuable is
+	/// stored in any player's pocket, is kept when it is taken out and continues for whoever stores it next. Cleared when a level ends.
+	/// </summary>
+	private static readonly Dictionary<int, ChargeTimer> Charges = new Dictionary<int, ChargeTimer>();
 
-	internal static void StartCharge(ValuableObject valuable)
+	/// <summary>The valuable was stored in a pocket: it charges on top of what it already had.</summary>
+	private static void ChargeStored(ValuableObject valuable)
 	{
-		ChargeStarts[valuable.GetInstanceID()] = Time.time;
+		int id = valuable.GetInstanceID();
+		Charges.TryGetValue(id, out ChargeTimer timer);
+		timer.Store(Time.time);
+		Charges[id] = timer;
 	}
 
-	/// <summary>Charge of a valuable, 0 to 1. A valuable whose start was missed (for example a pocket event that arrived before the charm registered) starts charging now.</summary>
+	/// <summary>The valuable left a pocket: its charge is kept and stops growing.</summary>
+	private static void ChargeRemoved(ValuableObject valuable)
+	{
+		int id = valuable.GetInstanceID();
+		if (Charges.TryGetValue(id, out ChargeTimer timer))
+		{
+			timer.Remove(Time.time);
+			Charges[id] = timer;
+		}
+	}
+
+	/// <summary>The power was used: the charge of the valuable goes back to zero.</summary>
+	internal static void SpendCharge(ValuableObject valuable)
+	{
+		int id = valuable.GetInstanceID();
+		Charges.TryGetValue(id, out ChargeTimer timer);
+		timer.Spend(Time.time);
+		Charges[id] = timer;
+	}
+
+	/// <summary>
+	/// Charge of a carried valuable, 0 to 1. A valuable whose storing was missed (for example a pocket event that arrived before the charm
+	/// registered) is treated as stored now.
+	/// </summary>
 	internal static float ChargeFractionOf(ValuableObject valuable, float seconds)
 	{
 		if (seconds <= 0f)
@@ -37,13 +67,13 @@ internal sealed class CharmTracker : MonoBehaviour
 		}
 
 		int id = valuable.GetInstanceID();
-		if (!ChargeStarts.TryGetValue(id, out float start))
+		if (!Charges.TryGetValue(id, out ChargeTimer timer))
 		{
-			start = Time.time;
-			ChargeStarts[id] = start;
+			timer.Store(Time.time);
+			Charges[id] = timer;
 		}
 
-		return ChargeMath.Fraction(Time.time, start, seconds);
+		return timer.Fraction(Time.time, seconds);
 	}
 
 	/// <summary>The charge shown on a slot, when the charm in it charges and is not full yet.</summary>
@@ -132,7 +162,7 @@ internal sealed class CharmTracker : MonoBehaviour
 		}
 
 		CharmsApi.ClearCache();
-		ChargeStarts.Clear();
+		Charges.Clear();
 	}
 
 	/// <summary>The cooldown shown on a slot, when the charm in it has one running.</summary>
@@ -158,13 +188,13 @@ internal sealed class CharmTracker : MonoBehaviour
 
 	private static void OnStored(PocketEvent pocketEvent)
 	{
-		// Charging starts when any player stores the valuable; the host needs it for other players' charms.
+		// Charging starts when any player stores the valuable (and continues from the charge it already had); the host needs it for other players' charms.
 		if (pocketEvent.Valuable != null)
 		{
 			Charm? charging = CharmsApi.CharmOf(pocketEvent.Valuable);
 			if (charging != null && charging.UsesCharge)
 			{
-				StartCharge(pocketEvent.Valuable);
+				ChargeStored(pocketEvent.Valuable);
 			}
 		}
 
@@ -189,7 +219,7 @@ internal sealed class CharmTracker : MonoBehaviour
 	{
 		if (pocketEvent.Valuable != null)
 		{
-			ChargeStarts.Remove(pocketEvent.Valuable.GetInstanceID());
+			ChargeRemoved(pocketEvent.Valuable);
 		}
 
 		if (pocketEvent.PlayerKey != LocalKey() || pocketEvent.Slot < 0 || pocketEvent.Slot >= SlotCount)

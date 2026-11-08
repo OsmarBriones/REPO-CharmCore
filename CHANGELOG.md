@@ -6,7 +6,7 @@
 - Runtime hygiene pass: network keys of the settings are built once (they were rebuilt on every read while a charm was active), the charm of a valuable is cached by instance id, and carrier lookups no longer allocate lists.
 
 ### Added
-- Charging charms: `Charm.EnableCharge`, `Charm.ChargeFraction`, `CharmsApi.ChargeOf` and `CharmsApi.ConsumeCharge`. The valuable's charge grows while it stays in a pocket and is spent when the power is used; the slot shows the percentage charged. For powers tied to an event that could otherwise be used by pocketing the valuable at the last second.
+- Charging charms: `Charm.EnableCharge`, `Charm.ChargeFraction`, `CharmsApi.ChargeOf` and `CharmsApi.ConsumeCharge`. The charge belongs to the valuable: it grows only while the valuable is in a pocket, is kept when it is taken out, continues for whoever stores it next, and is spent when the power is used; the slot shows the percentage charged. For powers tied to an event that could otherwise be used by pocketing the valuable at the last second.
 - `Charm.OnLevelEnded`: charms are told when a level ends (and when the next one starts) so they clear what they remember about it; the tracker also forgets its slots at the end of the level instead of at the start of the next one.
 - The cooldown slot view updates text and layout only when something changed.
 - While a cooldown is shown on a slot, the seconds and the stored valuable's value are fitted to the visible part of the slot (seconds above, value below, each auto-sized to use as much room as possible) so they are as large as the slot allows and do not overlap; the value returns to its normal size and place when the cooldown ends.

@@ -239,7 +239,7 @@ public static class CharmsApi
 			return;
 		}
 
-		CharmTracker.StartCharge(valuable);
+		CharmTracker.SpendCharge(valuable);
 		ChargeEvents.Broadcast(charm, valuable);
 	}
 
