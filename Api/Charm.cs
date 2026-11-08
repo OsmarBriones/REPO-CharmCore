@@ -54,6 +54,45 @@ public abstract class Charm
 	public string Id { get; }
 
 	/// <summary>
+	/// Makes this charm a CHARGING charm: its power depends on how long the valuable has been in a pocket, so it cannot be
+	/// pocketed only at the moment of use. Call it in the constructor with the default seconds needed to charge fully; it adds the
+	/// host-synchronised setting <c>ChargeSeconds</c> (5 to 1800). The charge starts at 0 whenever the valuable is stored, grows
+	/// with time while it stays in a pocket and is reset to 0 by <see cref="CharmsApi.ConsumeCharge"/>. Use it for powers tied to an
+	/// event that can be waited for (an extraction point completing), where otherwise the valuable could be stored at the last moment.
+	/// The slot shows the charge as a percentage and a veil that lifts as it charges.
+	/// </summary>
+	protected void EnableCharge(float defaultSeconds)
+	{
+		chargeSeconds = AddSetting("ChargeSeconds", defaultSeconds, 5f, 1800f, "Seconds the valuable must stay in a pocket to be fully charged (5 to 1800). A partly charged charm works in proportion to its charge.");
+	}
+
+	/// <summary>True for a charging charm (see <see cref="EnableCharge"/>).</summary>
+	public bool UsesCharge => chargeSeconds != null;
+
+	/// <summary>Seconds a full charge takes, as the host configured it; 0 for a charm that does not charge.</summary>
+	public float ChargeSeconds => chargeSeconds?.Value ?? 0f;
+
+	/// <summary>
+	/// How charged the valuable the LOCAL player carries is, from 0 to 1 (1 for a charm that does not charge, or when nothing is carried
+	/// the value is 0). For another player's charge on the host use <see cref="CharmsApi.ChargeOf"/>.
+	/// </summary>
+	public float ChargeFraction
+	{
+		get
+		{
+			if (!UsesCharge)
+			{
+				return 1f;
+			}
+
+			ValuableObject? valuable = FirstCarried();
+			return valuable == null ? 0f : CharmTracker.ChargeFractionOf(valuable, ChargeSeconds);
+		}
+	}
+
+	private CharmSetting? chargeSeconds;
+
+	/// <summary>
 	/// Set to true in the constructor when <c>WearPercent</c> means percent per SECOND instead of per use (the config
 	/// description says so). Such a charm calls <see cref="WearForSeconds"/> while its condition holds.
 	/// </summary>

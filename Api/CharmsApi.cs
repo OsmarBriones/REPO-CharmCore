@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
+using CharmCore.Net;
 
 namespace CharmCore.Api;
 
@@ -209,6 +210,37 @@ public static class CharmsApi
 				action(avatar, carried);
 			}
 		}
+	}
+
+	/// <summary>
+	/// How charged the charm a player carries is, from 0 to 1 (0 when they do not carry it, 1 for a charm that does not charge).
+	/// Works for any player on any machine, because the time each charging valuable was stored is tracked from the pocket events
+	/// every machine receives. Meant for effects the host applies for other players.
+	/// </summary>
+	public static float ChargeOf(PlayerAvatar avatar, Charm charm)
+	{
+		if (charm == null || !charm.UsesCharge)
+		{
+			return 1f;
+		}
+
+		ValuableObject? valuable = FirstCarried(avatar, charm);
+		return valuable == null ? 0f : CharmTracker.ChargeFractionOf(valuable, charm.ChargeSeconds);
+	}
+
+	/// <summary>
+	/// Spends the charge of a valuable (back to 0, and it starts charging again). Call it on the host right after a charging power
+	/// was used; every machine is told so that the owner's slot shows the empty charge too.
+	/// </summary>
+	public static void ConsumeCharge(Charm charm, ValuableObject valuable)
+	{
+		if (charm == null || valuable == null || !charm.UsesCharge)
+		{
+			return;
+		}
+
+		CharmTracker.StartCharge(valuable);
+		ChargeEvents.Broadcast(charm, valuable);
 	}
 
 	/// <summary>The first valuable of <paramref name="charm"/> in the player's pockets, or null. Allocates nothing but Pockets' small copy of the slots.</summary>

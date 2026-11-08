@@ -18,5 +18,6 @@ internal sealed class CharmRoomEvents : MonoBehaviourPunCallbacks, IOnEventCallb
 	public void OnEvent(EventData photonEvent)
 	{
 		HostRequests.Receive(photonEvent);
+		ChargeEvents.Receive(photonEvent);
 	}
 }

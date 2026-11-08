@@ -37,6 +37,15 @@ It does not implement any power. Powers are local to the carrier (energy, damage
 - **Host effects.** Some powers only work on the host (moving a valuable, hurting a monster, spawning an enemy). Two ways: the host applies the effect itself for every carrier with `CharmsApi.ForEachCarrier` / `CarriedBy` (Pockets tracks every player's pockets on every machine) and wears with `Charm.WearValuable`; or the owner sends a request with `Charm.SendToHost(action, args)` (Photon event 183, delivered to the master, which checks the sender carries the charm and calls `OnHostRequest`).
 - **Wear modifiers (`CharmsApi.OnWearing`).** A `WearContext` is offered to handlers on the host before value is removed; a charm may lower `Loss` for valuables carried by a player (for example a charm that protects other charms). `CharmsApi.CarrierOf` finds who carries a valuable.
 
+## Charging charms
+
+A power tied to an event that can be waited for (an extraction point completing) could otherwise be used by pocketing the valuable at the last second. A charm calls `EnableCharge(defaultSeconds)` in its constructor to become a *charging* charm: it gets the host-synchronised setting `ChargeSeconds` (5 to 1800), its charge starts at 0 when the valuable is stored, grows linearly while it stays in a pocket and is spent with `CharmsApi.ConsumeCharge`. How it works:
+- `CharmTracker` records when each charging valuable was stored, from the pocket events of EVERY player (every machine receives them), in a dictionary by instance id (`ChargeStarts`, cleared when a level ends); a removal forgets it. `Domain/ChargeMath.Fraction` turns the start time into 0..1.
+- `Charm.ChargeFraction` is the charge of the valuable the local player carries; `CharmsApi.ChargeOf(avatar, charm)` is the charge of any player's charm (for effects the host applies). A start that was missed counts as starting now.
+- `CharmsApi.ConsumeCharge(charm, valuable)` restarts the charge on this machine and `ChargeEvents` (Photon event 184, host to the others) restarts it everywhere, so the owner's slot shows the empty charge too.
+- The slot view shows a charge like a cooldown with the opposite meaning: the percentage charged in place of the seconds, and a veil that lifts as it fills; nothing is shown once it is full.
+- The tracking is per machine and starts at the event, so charges agree within the network latency of the pocket event; a charm that must be exact should treat the host's reading as final.
+
 ## Runtime hygiene
 
 Reviewed against `RepoKit/references/runtime-hygiene.md`:

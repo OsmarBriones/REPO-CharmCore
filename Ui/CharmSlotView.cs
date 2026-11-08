@@ -68,7 +68,11 @@ internal sealed class CharmSlotView : MonoBehaviour
 
 	private void Update()
 	{
-		if (spot == null || !CharmTracker.TryGetCooldown(spot.inventorySpotIndex, out float remaining, out float total))
+		float remaining = 0f;
+		float total = 0f;
+		float charge = 1f;
+		if (spot == null
+			|| !(CharmTracker.TryGetCooldown(spot.inventorySpotIndex, out remaining, out total) || CharmTracker.TryGetCharge(spot.inventorySpotIndex, out charge)))
 		{
 			SetVisible(false);
 			RestoreValueLabel();
@@ -80,10 +84,15 @@ internal sealed class CharmSlotView : MonoBehaviour
 			return;
 		}
 
-		veil!.fillAmount = WearMath.CooldownFraction(remaining, total);
-		string seconds = remaining >= 10f
-			? Mathf.CeilToInt(remaining).ToString(CultureInfo.InvariantCulture)
-			: remaining.ToString("0.0", CultureInfo.InvariantCulture);
+		bool charging = remaining <= 0f && charge < 1f;
+
+		// A cooldown drains the veil and counts seconds down; a charge lifts the veil as it fills and shows the percentage charged.
+		veil!.fillAmount = charging ? 1f - charge : WearMath.CooldownFraction(remaining, total);
+		string seconds = charging
+			? Mathf.FloorToInt(charge * 100f).ToString(CultureInfo.InvariantCulture) + "%"
+			: remaining >= 10f
+				? Mathf.CeilToInt(remaining).ToString(CultureInfo.InvariantCulture)
+				: remaining.ToString("0.0", CultureInfo.InvariantCulture);
 		if (seconds != lastSeconds)
 		{
 			lastSeconds = seconds;
